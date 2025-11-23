@@ -1,3 +1,4 @@
+#define	FIFO_SIZE (256*1024)
 #include "renderer.h"
 #include <stdlib.h>
 #include <string.h>
@@ -5,23 +6,13 @@
 #include <math.h>
 #include <gccore.h>
 #include <wiiuse/wpad.h>
-#define	FIFO_SIZE (256*1024)
+
 
 namespace Renderer{
 
     static GXRModeObj	*screenMode;
     static void	*frameBuffer;
     static vu8	readyForCopy;
-
-    static s16	vertices[] ATTRIBUTE_ALIGN(32) = {
-	    0, 15, 0,
-	    -15, -15, 0,
-	    15,	-15, 0};
-
-    static u8 colors[]	ATTRIBUTE_ALIGN(32)	= {
-	    255, 0,	0, 255,		// red
-	    0, 255,	0, 255,		// green
-	    0, 0, 255, 255};	// blue
 
 	static Mtx44	projection;
 	static Mtx	view;
@@ -31,6 +22,8 @@ namespace Renderer{
 
     static void update_screen(Mtx viewMatrix);
     static void	copy_buffers(u32 unused);
+
+	static float timer = 0;
 
     void Initialize(){
 	    
@@ -74,12 +67,10 @@ namespace Renderer{
 	    
 
         GX_ClearVtxDesc();
-	    GX_SetVtxDesc(GX_VA_POS, GX_INDEX8);
-	    GX_SetVtxDesc(GX_VA_CLR0, GX_INDEX8);
-	    GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS,	GX_POS_XYZ,	GX_S16,	0);
-	    GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_CLR0, GX_CLR_RGBA, GX_RGBA8,	0);
-	    GX_SetArray(GX_VA_POS, vertices, 3*sizeof(s16));
-	    GX_SetArray(GX_VA_CLR0,	colors,	4*sizeof(u8));
+	    GX_SetVtxDesc(GX_VA_POS, GX_DIRECT);
+		GX_SetVtxDesc(GX_VA_CLR0, GX_DIRECT);
+	    GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
+		GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_CLR0, GX_CLR_RGBA, GX_RGB8, 0);
 	    GX_SetNumChans(1);
 	    GX_SetNumTexGens(0);
 	    GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORDNULL, GX_TEXMAP_NULL, GX_COLOR0A0);
@@ -97,6 +88,7 @@ namespace Renderer{
 
 		WPAD_ScanPads();
 		if (WPAD_ButtonsDown(0) & WPAD_BUTTON_HOME) exit(0);
+		timer += 0.25f;
     }
 
     void update_screen(	Mtx	viewMatrix )
@@ -110,15 +102,13 @@ namespace Renderer{
 	    GX_LoadPosMtxImm(modelView,	GX_PNMTX0);
 
 	    GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 3);
-
-	    GX_Position1x8(0);
-	    GX_Color1x8(0);
-	    GX_Position1x8(1);
-	    GX_Color1x8(1);
-	    GX_Position1x8(2);
-	    GX_Color1x8(2);
-
-	    GX_End();
+			GX_Position3f32( 0.0f, 15.0f + (sin(timer) * 5.0f), 0.0f);		// Top
+			GX_Color3f32(1.0f,0.0f,0.0f);			// Set The Color To Red
+			GX_Position3f32(-15.0f,-15.0f, 0.0f);	// Bottom Left
+			GX_Color3f32(0.0f,1.0f,0.0f);			// Set The Color To Green
+			GX_Position3f32( 15.0f,-15.0f, 0.0f);	// Bottom Right
+			GX_Color3f32(0.0f,0.0f,1.0f);			// Set The Color To Blue
+		GX_End();
 
 	    GX_DrawDone();
 	    readyForCopy = GX_TRUE;
