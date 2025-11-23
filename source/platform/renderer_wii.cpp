@@ -1,5 +1,6 @@
 #define	FIFO_SIZE (256*1024)
 #include "renderer.h"
+#include "../mesh.h"
 #include <stdlib.h>
 #include <string.h>
 #include <malloc.h>
@@ -10,6 +11,7 @@
 
 namespace Renderer{
 
+	static Mesh *testMesh;
     static GXRModeObj	*screenMode;
     static void	*frameBuffer;
     static vu8	readyForCopy;
@@ -27,6 +29,17 @@ namespace Renderer{
 
     void Initialize(){
 	    
+		// make a nice lil colorful triangle
+		void* mem = memalign(32, sizeof(Mesh));
+		testMesh = new(mem) Mesh();
+		
+		testMesh->verts.push_back({0.0f,15.0f,0.0f});
+		testMesh->verts.push_back({-15.0f,-15.0f,0.0f});
+		testMesh->verts.push_back({15.0f,-15.0f,0.0f});
+		testMesh->colors.push_back({1.0f,0.0f,0.0f});
+		testMesh->colors.push_back({0.0f,1.0f,0.0f});
+		testMesh->colors.push_back({0.0f,0.0f,1.0f});
+
 	    GXColor	backgroundColor	= {0, 0, 0,	255};
 	    void *fifoBuffer = NULL;
 
@@ -91,6 +104,48 @@ namespace Renderer{
 		timer += 0.25f;
     }
 
+	void draw_mesh( Mesh* mesh ){
+		GX_ClearVtxDesc();
+		GX_InvVtxCache();
+		GX_InvalidateTexAll();
+		GX_SetNumChans(1);
+	    GX_SetNumTexGens(0);
+		GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORDNULL, GX_TEXMAP_NULL, GX_COLOR0A0);
+	    GX_SetTevOp(GX_TEVSTAGE0, GX_PASSCLR);
+		size_t vertCount = mesh->verts.size();
+		bool hasColors = false;
+		bool hasUvs = false;
+		GX_SetVtxDesc(GX_VA_POS, GX_DIRECT);
+		GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
+		if (mesh->colors.size() == vertCount)
+		{
+			GX_SetVtxDesc(GX_VA_CLR0, GX_DIRECT);
+			GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_CLR0, GX_CLR_RGBA, GX_RGB8, 0);
+			hasColors = true;
+		}
+		if (mesh->uvs.size() == vertCount)
+		{
+			GX_SetVtxDesc(GX_VA_TEX0, GX_DIRECT);
+			GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
+			hasUvs = true;
+		}
+
+		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, vertCount);
+		for(size_t i=0;i<vertCount;i++){
+			Vec3 vert = mesh->verts[i];
+			GX_Position3f32(vert.x, vert.y, vert.z);
+			if (hasColors){
+				Vec3 color = mesh->colors[i];
+				GX_Color3f32(color.x, color.y, color.z);
+			}
+			if (hasUvs){
+				Vec2 uv = mesh->uvs[i];
+				GX_TexCoord2f32(uv.x, uv.y);
+			}
+		}
+		GX_End();
+	}
+
     void update_screen(	Mtx	viewMatrix )
     {
 	    Mtx	modelView;
@@ -100,7 +155,8 @@ namespace Renderer{
 	    guMtxConcat(viewMatrix,modelView,modelView);
 
 	    GX_LoadPosMtxImm(modelView,	GX_PNMTX0);
-
+		draw_mesh(testMesh);
+		/*
 	    GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 3);
 			GX_Position3f32( 0.0f, 15.0f + (sin(timer) * 5.0f), 0.0f);		// Top
 			GX_Color3f32(1.0f,0.0f,0.0f);			// Set The Color To Red
@@ -108,7 +164,7 @@ namespace Renderer{
 			GX_Color3f32(0.0f,1.0f,0.0f);			// Set The Color To Green
 			GX_Position3f32( 15.0f,-15.0f, 0.0f);	// Bottom Right
 			GX_Color3f32(0.0f,0.0f,1.0f);			// Set The Color To Blue
-		GX_End();
+		GX_End();*/
 
 	    GX_DrawDone();
 	    readyForCopy = GX_TRUE;

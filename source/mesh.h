@@ -1,10 +1,11 @@
 #pragma once
 #include <vector>
-typedef float f32;
+#include "mathtypes.h"
+
 
 class Mesh {
     public:
-        std::vector<f32[3]> verts;
-        std::vector<f32[3]> colors;
-        std::vector<f32[2]> uvs;
+        std::vector<Vec3> verts;
+        std::vector<Vec3> colors;
+        std::vector<Vec2> uvs;
 };
