@@ -85,7 +85,7 @@ namespace Renderer{
 	    GX_SetFieldMode(screenMode->field_rendering,
 					((screenMode->viHeight==2*screenMode->xfbHeight)?GX_ENABLE:GX_DISABLE));
 
-	    GX_SetCullMode(GX_CULL_NONE);
+	    GX_SetCullMode(GX_CULL_BACK);
 	    GX_CopyDisp(frameBuffer,GX_TRUE);
 	    GX_SetDispCopyGamma(GX_GM_1_0);
 
@@ -104,7 +104,7 @@ namespace Renderer{
 
 		WPAD_ScanPads();
 		if (WPAD_ButtonsDown(0) & WPAD_BUTTON_HOME) exit(0);
-		timer += 0.5f;
+		timer += 0.75f;
     }
 
 	void draw_mesh( Mesh* mesh ){
