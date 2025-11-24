@@ -8,4 +8,4 @@ class Texture{
         #if PLATFORM_WII
         GXTexObj* m_texObj;
         #endif
-}
+};
