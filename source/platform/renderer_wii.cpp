@@ -120,20 +120,34 @@ namespace Renderer{
 		size_t vertCount = mesh->verts.size();
 		bool hasColors = false;
 		bool hasUvs = false;
+		bool hasNormals = false;
+
 		GX_SetVtxDesc(GX_VA_POS, GX_DIRECT);
-		GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
+
 		if (mesh->colors.size() == vertCount)
 		{
 			GX_SetVtxDesc(GX_VA_CLR0, GX_DIRECT);
-			GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_CLR0, GX_CLR_RGBA, GX_RGB8, 0);
 			hasColors = true;
+		}
+		if (mesh->normals.size() == vertCount){
+			GX_SetVtxDesc(GX_VA_NRM, GX_DIRECT);
+			hasNormals = true;
 		}
 		if (mesh->uvs.size() == vertCount)
 		{
 			GX_SetVtxDesc(GX_VA_TEX0, GX_DIRECT);
-			GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
 			hasUvs = true;
 		}
+		
+		GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
+
+		if (hasColors)
+			GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_CLR0, GX_CLR_RGBA, GX_RGB8, 0);
+		if (hasNormals)
+			GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0);
+		if (hasUvs)
+			GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
+		
 
 		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, vertCount);
 		for(size_t i=0;i<vertCount;i++){
@@ -142,6 +156,10 @@ namespace Renderer{
 			if (hasColors){
 				Vec3 color = mesh->colors[i];
 				GX_Color3f32(color.x, color.y, color.z);
+			}
+			if (hasNormals){
+				Vec3 nrm = mesh->normals[i];
+				GX_Normal3f32(nrm.x, nrm.y, nrm.z);
 			}
 			if (hasUvs){
 				Vec2 uv = mesh->uvs[i];
