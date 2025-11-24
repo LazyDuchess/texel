@@ -40,17 +40,6 @@ namespace Renderer{
 		TPLFile texturesTPL;
 		testMesh = new Mesh();
 		LoadMesh(testMesh);
-		// make a nice lil colorful triangle
-		/*
-		testMesh->verts.push_back({0.0f,15.0f,0.0f});
-		testMesh->verts.push_back({-15.0f,-15.0f,0.0f});
-		testMesh->verts.push_back({15.0f,-15.0f,0.0f});
-		testMesh->colors.push_back({1.0f,0.0f,0.0f});
-		testMesh->colors.push_back({0.0f,1.0f,0.0f});
-		testMesh->colors.push_back({0.0f,0.0f,1.0f});*/
-
-		
-
 	    GXColor	backgroundColor	= {0, 0, 0,	255};
 	    void *fifoBuffer = NULL;
 
@@ -117,54 +106,25 @@ namespace Renderer{
 	    GX_SetTevOp(GX_TEVSTAGE0, GX_REPLACE);
 		GX_SetTexCoordGen(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
 		GX_LoadTexObj(&texObj, GX_TEXMAP0);
+		
 		size_t vertCount = mesh->verts.size();
-		bool hasColors = false;
-		bool hasUvs = false;
-		bool hasNormals = false;
 
 		GX_SetVtxDesc(GX_VA_POS, GX_DIRECT);
+		GX_SetVtxDesc(GX_VA_NRM, GX_DIRECT);
+		GX_SetVtxDesc(GX_VA_TEX0, GX_DIRECT);
 
-		if (mesh->colors.size() == vertCount)
-		{
-			GX_SetVtxDesc(GX_VA_CLR0, GX_DIRECT);
-			hasColors = true;
-		}
-		if (mesh->normals.size() == vertCount){
-			GX_SetVtxDesc(GX_VA_NRM, GX_DIRECT);
-			hasNormals = true;
-		}
-		if (mesh->uvs.size() == vertCount)
-		{
-			GX_SetVtxDesc(GX_VA_TEX0, GX_DIRECT);
-			hasUvs = true;
-		}
-		
 		GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
-
-		if (hasColors)
-			GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_CLR0, GX_CLR_RGBA, GX_RGB8, 0);
-		if (hasNormals)
-			GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0);
-		if (hasUvs)
-			GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
+		GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0);
+		GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
 		
-
 		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, vertCount);
 		for(size_t i=0;i<vertCount;i++){
 			Vec3 vert = mesh->verts[i];
 			GX_Position3f32(vert.x, vert.y, vert.z);
-			if (hasColors){
-				Vec3 color = mesh->colors[i];
-				GX_Color3f32(color.x, color.y, color.z);
-			}
-			if (hasNormals){
-				Vec3 nrm = mesh->normals[i];
-				GX_Normal3f32(nrm.x, nrm.y, nrm.z);
-			}
-			if (hasUvs){
-				Vec2 uv = mesh->uvs[i];
-				GX_TexCoord2f32(uv.x, uv.y);
-			}
+			Vec3 nrm = mesh->normals[i];
+			GX_Normal3f32(nrm.x, nrm.y, nrm.z);
+			Vec2 uv = mesh->uvs[i];
+			GX_TexCoord2f32(uv.x, uv.y);
 		}
 		GX_End();
 	}
