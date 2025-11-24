@@ -18,26 +18,30 @@ namespace Renderer{
 
 	static Mtx44	projection;
 	static Mtx	view;
-	static guVector camera =	{0.0F, 0.0F, 0.0F};
+	static guVector camera =	{2.0F, 2.0F, 0.5F};
 	static guVector up =	{0.0F, 1.0F, 0.0F};
-	static guVector look	= {0.0F, 0.0F, -1.0F};
+	static guVector look	= {0.0F, 1.0F, -1.0F};
 
     static void update_screen(Mtx viewMatrix);
     static void	copy_buffers(u32 unused);
 
 	static float timer = 0;
 
+	void LoadMesh(Mesh* mesh){
+		#include "metalHead.inc"
+	}
+
     void Initialize(){
-	    
-		// make a nice lil colorful triangle
 		testMesh = new Mesh();
-		
+		LoadMesh(testMesh);
+		// make a nice lil colorful triangle
+		/*
 		testMesh->verts.push_back({0.0f,15.0f,0.0f});
 		testMesh->verts.push_back({-15.0f,-15.0f,0.0f});
 		testMesh->verts.push_back({15.0f,-15.0f,0.0f});
 		testMesh->colors.push_back({1.0f,0.0f,0.0f});
 		testMesh->colors.push_back({0.0f,1.0f,0.0f});
-		testMesh->colors.push_back({0.0f,0.0f,1.0f});
+		testMesh->colors.push_back({0.0f,0.0f,1.0f});*/
 
 	    GXColor	backgroundColor	= {0, 0, 0,	255};
 	    void *fifoBuffer = NULL;
@@ -90,7 +94,7 @@ namespace Renderer{
     }
 
     void Update(){
-		guPerspective(projection, 60, (CONF_GetAspectRatio() == CONF_ASPECT_16_9) ? 16.0F/9.0F : 4.0F/3.0F, 10.0F,	300.0F);
+		guPerspective(projection, 60, (CONF_GetAspectRatio() == CONF_ASPECT_16_9) ? 16.0F/9.0F : 4.0F/3.0F, 1.0F,	30.0F);
 	    GX_LoadProjectionMtx(projection, GX_PERSPECTIVE);
         guLookAt(view, &camera,	&up, &look);
 		GX_SetViewport(0,0,screenMode->fbWidth,screenMode->efbHeight,0,1);
@@ -150,27 +154,16 @@ namespace Renderer{
 	    Mtx	modelView;
 
 	    guMtxIdentity(modelView);
-	    guMtxTransApply(modelView, modelView, 20.0F,	0.0F, -50.0F);
+		guVector axis;
+		axis.x = 0;
+		axis.y = 1;
+		axis.z = 0;
+		guMtxRotAxisDeg(modelView, &axis, timer);
+	    guMtxTransApply(modelView, modelView, 0.0F,0.0F,-1.0F);
 	    guMtxConcat(viewMatrix,modelView,modelView);
 
 	    GX_LoadPosMtxImm(modelView,	GX_PNMTX0);
 		draw_mesh(testMesh);
-
-		guMtxIdentity(modelView);
-	    guMtxTransApply(modelView, modelView, -20.0F,	0.0F, -50.0F);
-	    guMtxConcat(viewMatrix,modelView,modelView);
-
-	    GX_LoadPosMtxImm(modelView,	GX_PNMTX0);
-		draw_mesh(testMesh);
-		/*
-	    GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 3);
-			GX_Position3f32( 0.0f, 15.0f + (sin(timer) * 5.0f), 0.0f);		// Top
-			GX_Color3f32(1.0f,0.0f,0.0f);			// Set The Color To Red
-			GX_Position3f32(-15.0f,-15.0f, 0.0f);	// Bottom Left
-			GX_Color3f32(0.0f,1.0f,0.0f);			// Set The Color To Green
-			GX_Position3f32( 15.0f,-15.0f, 0.0f);	// Bottom Right
-			GX_Color3f32(0.0f,0.0f,1.0f);			// Set The Color To Blue
-		GX_End();*/
 
 	    GX_DrawDone();
 	    readyForCopy = GX_TRUE;
