@@ -10,7 +10,8 @@ namespace Renderer{
 
 class RenderCommand{
     public:
-    Matrix m_matrix;
-    Mesh* m_mesh;
-    Material* m_material;
+        RenderCommand(Matrix mtx, Mesh* mesh, Material* material);
+        Matrix m_matrix;
+        Mesh* m_mesh;
+        Material* m_material;
 };

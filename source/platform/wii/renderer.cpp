@@ -11,9 +11,14 @@
 #include "textures_tpl.h"
 #include "textures.h"
 
+RenderCommand::RenderCommand(Matrix mtx, Mesh* mesh, Material* material){
+	memcpy(m_matrix, mtx, sizeof(Matrix));
+	m_mesh = mesh;
+	m_material = material;
+}
 
 namespace Renderer{
-
+	static Material *testMaterial;
 	static Mesh *testMesh;
     static GXRModeObj	*screenMode;
     static void	*frameBuffer;
@@ -38,6 +43,11 @@ namespace Renderer{
 
     void Initialize(){
 		TPLFile texturesTPL;
+		TPL_OpenTPLFromMemory(&texturesTPL, (void *)textures_tpl,textures_tpl_size);
+		TPL_GetTexture(&texturesTPL,metalhead,&texObj);
+		testMaterial = new Material();
+		testMaterial->m_shader = SHADER_UNLIT;
+		testMaterial->m_texture = new Texture(&texObj);
 		testMesh = new Mesh();
 		LoadMesh(testMesh);
 	    GXColor	backgroundColor	= {0, 0, 0,	255};
@@ -79,9 +89,6 @@ namespace Renderer{
 	    GX_SetDispCopyGamma(GX_GM_1_0);
 
         GX_ClearVtxDesc();
-		TPL_OpenTPLFromMemory(&texturesTPL, (void *)textures_tpl,textures_tpl_size);
-		TPL_GetTexture(&texturesTPL,metalhead,&texObj);
-		GX_LoadTexObj(&texObj, GX_TEXMAP0);
 	}
 
     void Update(){
@@ -96,7 +103,8 @@ namespace Renderer{
 		timer += 0.75f;
     }
 
-	void draw_mesh( Mesh* mesh ){
+	void ExecuteRenderCommand(RenderCommand* cmd){
+		GX_LoadPosMtxImm(cmd->m_matrix,	GX_PNMTX0);
 		GX_ClearVtxDesc();
 		GX_InvVtxCache();
 		GX_InvalidateTexAll();
@@ -105,9 +113,9 @@ namespace Renderer{
 		GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
 	    GX_SetTevOp(GX_TEVSTAGE0, GX_REPLACE);
 		GX_SetTexCoordGen(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
-		GX_LoadTexObj(&texObj, GX_TEXMAP0);
+		GX_LoadTexObj(cmd->m_material->m_texture->m_texObj, GX_TEXMAP0);
 		
-		size_t vertCount = mesh->verts.size();
+		size_t vertCount = cmd->m_mesh->verts.size();
 
 		GX_SetVtxDesc(GX_VA_POS, GX_DIRECT);
 		GX_SetVtxDesc(GX_VA_NRM, GX_DIRECT);
@@ -119,16 +127,16 @@ namespace Renderer{
 		
 		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, vertCount);
 		for(size_t i=0;i<vertCount;i++){
-			Vec3 vert = mesh->verts[i];
+			Vec3 vert = cmd->m_mesh->verts[i];
 			GX_Position3f32(vert.x, vert.y, vert.z);
-			Vec3 nrm = mesh->normals[i];
+			Vec3 nrm = cmd->m_mesh->normals[i];
 			GX_Normal3f32(nrm.x, nrm.y, nrm.z);
-			Vec2 uv = mesh->uvs[i];
+			Vec2 uv = cmd->m_mesh->uvs[i];
 			GX_TexCoord2f32(uv.x, uv.y);
 		}
 		GX_End();
 	}
-
+	
     void update_screen(	Mtx	viewMatrix )
     {
 	    Mtx	modelView;
@@ -142,8 +150,8 @@ namespace Renderer{
 	    guMtxTransApply(modelView, modelView, 0.0F,0.0F,-1.0F);
 	    guMtxConcat(viewMatrix,modelView,modelView);
 
-	    GX_LoadPosMtxImm(modelView,	GX_PNMTX0);
-		draw_mesh(testMesh);
+		RenderCommand cmd = RenderCommand(modelView, testMesh, testMaterial);
+		ExecuteRenderCommand(&cmd);
 
 	    GX_DrawDone();
 	    readyForCopy = GX_TRUE;
