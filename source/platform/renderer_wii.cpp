@@ -104,7 +104,7 @@ namespace Renderer{
 
 		WPAD_ScanPads();
 		if (WPAD_ButtonsDown(0) & WPAD_BUTTON_HOME) exit(0);
-		timer += 0.25f;
+		timer += 0.5f;
     }
 
 	void draw_mesh( Mesh* mesh ){
