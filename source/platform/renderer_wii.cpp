@@ -30,8 +30,7 @@ namespace Renderer{
     void Initialize(){
 	    
 		// make a nice lil colorful triangle
-		void* mem = memalign(32, sizeof(Mesh));
-		testMesh = new(mem) Mesh();
+		testMesh = new Mesh();
 		
 		testMesh->verts.push_back({0.0f,15.0f,0.0f});
 		testMesh->verts.push_back({-15.0f,-15.0f,0.0f});
@@ -151,7 +150,14 @@ namespace Renderer{
 	    Mtx	modelView;
 
 	    guMtxIdentity(modelView);
-	    guMtxTransApply(modelView, modelView, 0.0F,	0.0F, -50.0F);
+	    guMtxTransApply(modelView, modelView, 20.0F,	0.0F, -50.0F);
+	    guMtxConcat(viewMatrix,modelView,modelView);
+
+	    GX_LoadPosMtxImm(modelView,	GX_PNMTX0);
+		draw_mesh(testMesh);
+
+		guMtxIdentity(modelView);
+	    guMtxTransApply(modelView, modelView, -20.0F,	0.0F, -50.0F);
 	    guMtxConcat(viewMatrix,modelView,modelView);
 
 	    GX_LoadPosMtxImm(modelView,	GX_PNMTX0);
