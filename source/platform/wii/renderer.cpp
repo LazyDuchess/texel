@@ -1,6 +1,6 @@
 #define	FIFO_SIZE (256*1024)
-#include "renderer.h"
-#include "../mesh.h"
+#include "platform/renderer.h"
+#include "mesh.h"
 #include <stdlib.h>
 #include <string.h>
 #include <malloc.h>
@@ -33,7 +33,7 @@ namespace Renderer{
 	static GXTexObj texObj;
 
 	void LoadMesh(Mesh* mesh){
-		#include "metalHead.inc"
+		#include "platform/metalHead.inc"
 	}
 
     void Initialize(){
