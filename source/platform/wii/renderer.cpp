@@ -18,8 +18,15 @@ RenderCommand::RenderCommand(Matrix mtx, Mesh* mesh, Material* material){
 }
 
 namespace Renderer{
-	static Material *testMaterial;
-	static Mesh *testMesh;
+	static Material *redMaterial;
+	static Mesh *redMesh;
+
+	static Material *tryceMaterial;
+	static Mesh *tryceMesh;
+
+	static Material *belMaterial;
+	static Mesh *belMesh;
+
     static GXRModeObj	*screenMode;
     static void	*frameBuffer;
     static vu8	readyForCopy;
@@ -35,22 +42,47 @@ namespace Renderer{
 
 	static float timer = 0;
 
-	static GXTexObj texObj;
-
-	void LoadMesh(Mesh* mesh){
+	void LoadRedMesh(Mesh* mesh){
 		#include "platform/metalHead.inc"
+	}
+
+	void LoadTryceMesh(Mesh* mesh){
+		#include "platform/blockGuy.inc"
+	}
+
+	void LoadBelMesh(Mesh* mesh){
+		#include "platform/spaceGirl.inc"
 	}
 
     void Initialize(){
 		TPLFile texturesTPL;
+		GXTexObj* redTexObj = new GXTexObj();
+		GXTexObj* tryceTexObj = new GXTexObj();
+		GXTexObj* belTexObj = new GXTexObj();
 		TPL_OpenTPLFromMemory(&texturesTPL, (void *)textures_tpl,textures_tpl_size);
-		TPL_GetTexture(&texturesTPL,metalhead,&texObj);
-		testMaterial = new Material();
-		testMaterial->m_shader = SHADER_UNLIT;
-		testMaterial->m_texture = new Texture(&texObj);
-		testMesh = new Mesh();
-		LoadMesh(testMesh);
-	    GXColor	backgroundColor	= {0, 0, 0,	255};
+		
+		TPL_GetTexture(&texturesTPL,metalhead,redTexObj);
+		redMaterial = new Material();
+		redMaterial->m_shader = SHADER_UNLIT;
+		redMaterial->m_texture = new Texture(redTexObj);
+		redMesh = new Mesh();
+		LoadRedMesh(redMesh);
+
+		TPL_GetTexture(&texturesTPL,blockguy,tryceTexObj);
+		tryceMaterial = new Material();
+		tryceMaterial->m_shader = SHADER_UNLIT;
+		tryceMaterial->m_texture = new Texture(tryceTexObj);
+		tryceMesh = new Mesh();
+		LoadTryceMesh(tryceMesh);
+
+		TPL_GetTexture(&texturesTPL,spacegirl,belTexObj);
+		belMaterial = new Material();
+		belMaterial->m_shader = SHADER_UNLIT;
+		belMaterial->m_texture = new Texture(belTexObj);
+		belMesh = new Mesh();
+		LoadBelMesh(belMesh);
+	    
+		GXColor	backgroundColor	= {0, 0, 0,	255};
 	    void *fifoBuffer = NULL;
 
 	    VIDEO_Init();
@@ -150,7 +182,23 @@ namespace Renderer{
 	    guMtxTransApply(modelView, modelView, 0.0F,0.0F,-1.0F);
 	    guMtxConcat(viewMatrix,modelView,modelView);
 
-		RenderCommand cmd = RenderCommand(modelView, testMesh, testMaterial);
+		RenderCommand cmd = RenderCommand(modelView, redMesh, redMaterial);
+		ExecuteRenderCommand(&cmd);
+
+		guMtxIdentity(modelView);
+		guMtxRotAxisDeg(modelView, &axis, timer);
+	    guMtxTransApply(modelView, modelView, -2.0F,0.0F,0.0F);
+	    guMtxConcat(viewMatrix,modelView,modelView);
+
+		cmd = RenderCommand(modelView, tryceMesh, tryceMaterial);
+		ExecuteRenderCommand(&cmd);
+
+		guMtxIdentity(modelView);
+		guMtxRotAxisDeg(modelView, &axis, timer);
+	    guMtxTransApply(modelView, modelView, -1.0F,0.0F,-2.0F);
+	    guMtxConcat(viewMatrix,modelView,modelView);
+
+		cmd = RenderCommand(modelView, belMesh, belMaterial);
 		ExecuteRenderCommand(&cmd);
 
 	    GX_DrawDone();
