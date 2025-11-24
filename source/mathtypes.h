@@ -8,3 +8,5 @@ struct Vec2 {
 struct Vec3 {
     f32 x, y, z;
 };
+
+typedef f32	Matrix[3][4];

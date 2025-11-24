@@ -7,6 +7,7 @@
                 "C:\\devkitPro\\libogc\\include"
             ],
             "defines": [
+                "PLATFORM_WII",
                 "_DEBUG",
                 "UNICODE",
                 "_UNICODE"
