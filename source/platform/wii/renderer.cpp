@@ -11,6 +11,11 @@
 #include "textures_tpl.h"
 #include "textures.h"
 
+#define VFMT_NONE 0
+#define VFMT_VTXNRMUV 1
+#define VFMT_VTXUV 2
+typedef char vfmt_id;
+
 RenderCommand::RenderCommand(Matrix mtx, Mesh* mesh, Material* material){
 	memcpy(m_matrix, mtx, sizeof(Matrix));
 	m_mesh = mesh;
@@ -63,21 +68,21 @@ namespace Renderer{
 		
 		TPL_GetTexture(&texturesTPL,metalhead,redTexObj);
 		redMaterial = new Material();
-		redMaterial->m_shader = SHADER_UNLIT;
+		redMaterial->m_shader = SHADER_UNLIT_TEXTURED;
 		redMaterial->m_texture = new Texture(redTexObj);
 		redMesh = new Mesh();
 		LoadRedMesh(redMesh);
 
 		TPL_GetTexture(&texturesTPL,blockguy,tryceTexObj);
 		tryceMaterial = new Material();
-		tryceMaterial->m_shader = SHADER_UNLIT;
+		tryceMaterial->m_shader = SHADER_UNLIT_TEXTURED;
 		tryceMaterial->m_texture = new Texture(tryceTexObj);
 		tryceMesh = new Mesh();
 		LoadTryceMesh(tryceMesh);
 
 		TPL_GetTexture(&texturesTPL,spacegirl,belTexObj);
 		belMaterial = new Material();
-		belMaterial->m_shader = SHADER_UNLIT;
+		belMaterial->m_shader = SHADER_UNLIT_TEXTURED;
 		belMaterial->m_texture = new Texture(belTexObj);
 		belMesh = new Mesh();
 		LoadBelMesh(belMesh);
@@ -135,15 +140,83 @@ namespace Renderer{
 		timer += 0.75f;
     }
 
-	void PrepareMaterial(RenderCommand* cmd, RenderCommand* prev){
-		if (prev != nullptr && cmd->m_material == prev->m_material) return;
+	vfmt_id GetVertexFormat(shader_id shaderId){
+		switch(shaderId){
+			case SHADER_UNLIT_TEXTURED:
+				return VFMT_VTXUV;
+		}
+		return VFMT_NONE;
+	}
+
+	void PrepareVertexFormat(vfmt_id format){
+		GX_ClearVtxDesc();
+		switch(format){
+			case VFMT_VTXNRMUV:
+				GX_SetVtxDesc(GX_VA_POS, GX_DIRECT);
+				GX_SetVtxDesc(GX_VA_NRM, GX_DIRECT);
+				GX_SetVtxDesc(GX_VA_TEX0, GX_DIRECT);
+
+				GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
+				GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0);
+				GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
+			break;
+			case VFMT_VTXUV:
+				GX_SetVtxDesc(GX_VA_POS, GX_DIRECT);
+				GX_SetVtxDesc(GX_VA_TEX0, GX_DIRECT);
+
+				GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
+				GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
+			break;
+		}
+	}
+
+	void DoDrawCall(RenderCommand* cmd, vfmt_id format){
+		size_t vertCount = cmd->m_mesh->verts.size();
+		
+		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, vertCount);
+		switch(format){
+			case VFMT_VTXNRMUV:
+				for(size_t i=0;i<vertCount;i++){
+					Vec3 vert = cmd->m_mesh->verts[i];
+					GX_Position3f32(vert.x, vert.y, vert.z);
+					Vec3 nrm = cmd->m_mesh->normals[i];
+					GX_Normal3f32(nrm.x, nrm.y, nrm.z);
+					Vec2 uv = cmd->m_mesh->uvs[i];
+					GX_TexCoord2f32(uv.x, uv.y);
+				}
+			break;
+			case VFMT_VTXUV:
+				for(size_t i=0;i<vertCount;i++){
+					Vec3 vert = cmd->m_mesh->verts[i];
+					GX_Position3f32(vert.x, vert.y, vert.z);
+					Vec2 uv = cmd->m_mesh->uvs[i];
+					GX_TexCoord2f32(uv.x, uv.y);
+				}
+			break;
+		}
+		GX_End();
+	}
+
+	void PrepareVertexFormatForCommand(RenderCommand* cmd, RenderCommand* prev, vfmt_id format){
+		if (prev != nullptr){
+			vfmt_id prevFormat = GetVertexFormat(prev->m_material->m_shader);
+			if (prevFormat == format) return;
+		}
+		PrepareVertexFormat(format);
+	}
+
+
+	vfmt_id PrepareMaterial(RenderCommand* cmd, RenderCommand* prev){
+		vfmt_id format = GetVertexFormat(cmd->m_material->m_shader);
+		if (prev != nullptr && cmd->m_material == prev->m_material) return format;
 
 		GX_LoadTexObj(cmd->m_material->m_texture->m_texObj, GX_TEXMAP0);
 
-		if (prev != nullptr && prev->m_material->m_shader == cmd->m_material->m_shader) return;
+		if (prev != nullptr && prev->m_material->m_shader == cmd->m_material->m_shader) return format;
 
+		PrepareVertexFormatForCommand(cmd, prev, format);
 		// call when vtx attributes change
-		GX_ClearVtxDesc();
+		
 		// call when dynamic meshes modified
 		//GX_InvVtxCache();
 		// call when textures modified
@@ -154,14 +227,7 @@ namespace Renderer{
 		GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
 	    GX_SetTevOp(GX_TEVSTAGE0, GX_REPLACE);
 		GX_SetTexCoordGen(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
-
-		GX_SetVtxDesc(GX_VA_POS, GX_DIRECT);
-		GX_SetVtxDesc(GX_VA_NRM, GX_DIRECT);
-		GX_SetVtxDesc(GX_VA_TEX0, GX_DIRECT);
-
-		GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
-		GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0);
-		GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
+		return format;
 	}
 
 	void ExecuteRenderCommand(RenderCommand* cmd, RenderCommand* prev){
@@ -173,19 +239,8 @@ namespace Renderer{
 		// call when textures modified
 		//GX_InvalidateTexAll();
 		
-		PrepareMaterial(cmd, prev);
-		size_t vertCount = cmd->m_mesh->verts.size();
-		
-		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, vertCount);
-		for(size_t i=0;i<vertCount;i++){
-			Vec3 vert = cmd->m_mesh->verts[i];
-			GX_Position3f32(vert.x, vert.y, vert.z);
-			Vec3 nrm = cmd->m_mesh->normals[i];
-			GX_Normal3f32(nrm.x, nrm.y, nrm.z);
-			Vec2 uv = cmd->m_mesh->uvs[i];
-			GX_TexCoord2f32(uv.x, uv.y);
-		}
-		GX_End();
+		vfmt_id format = PrepareMaterial(cmd, prev);
+		DoDrawCall(cmd, format);
 	}
 	
     void update_screen(	Mtx	viewMatrix )
