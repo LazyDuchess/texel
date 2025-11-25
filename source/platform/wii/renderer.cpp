@@ -152,17 +152,17 @@ namespace Renderer{
 		GX_ClearVtxDesc();
 		switch(format){
 			case VFMT_VTXNRMUV:
-				GX_SetVtxDesc(GX_VA_POS, GX_DIRECT);
-				GX_SetVtxDesc(GX_VA_NRM, GX_DIRECT);
-				GX_SetVtxDesc(GX_VA_TEX0, GX_DIRECT);
+				GX_SetVtxDesc(GX_VA_POS, GX_INDEX16);
+				GX_SetVtxDesc(GX_VA_NRM, GX_INDEX16);
+				GX_SetVtxDesc(GX_VA_TEX0, GX_INDEX16);
 
 				GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
 				GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0);
 				GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
 			break;
 			case VFMT_VTXUV:
-				GX_SetVtxDesc(GX_VA_POS, GX_DIRECT);
-				GX_SetVtxDesc(GX_VA_TEX0, GX_DIRECT);
+				GX_SetVtxDesc(GX_VA_POS, GX_INDEX16);
+				GX_SetVtxDesc(GX_VA_TEX0, GX_INDEX16);
 
 				GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
 				GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
@@ -172,29 +172,30 @@ namespace Renderer{
 
 	void DoDrawCall(RenderCommand* cmd, vfmt_id format){
 		size_t vertCount = cmd->m_mesh->verts.size();
-		
-		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, vertCount);
 		switch(format){
 			case VFMT_VTXNRMUV:
+				GX_SetArray(GX_VA_POS, cmd->m_mesh->verts.data(), 3 * sizeof(float));
+				GX_SetArray(GX_VA_NRM, cmd->m_mesh->normals.data(), 3 * sizeof(float));
+				GX_SetArray(GX_VA_TEX0, cmd->m_mesh->uvs.data(), 2 * sizeof(float));
+				GX_Begin(GX_TRIANGLES, GX_VTXFMT0, vertCount);
 				for(size_t i=0;i<vertCount;i++){
-					Vec3 vert = cmd->m_mesh->verts[i];
-					GX_Position3f32(vert.x, vert.y, vert.z);
-					Vec3 nrm = cmd->m_mesh->normals[i];
-					GX_Normal3f32(nrm.x, nrm.y, nrm.z);
-					Vec2 uv = cmd->m_mesh->uvs[i];
-					GX_TexCoord2f32(uv.x, uv.y);
+					GX_Position1x16(i);
+					GX_Normal1x16(i);
+					GX_TexCoord1x16(i);
 				}
+				GX_End();
 			break;
 			case VFMT_VTXUV:
+				GX_SetArray(GX_VA_POS, cmd->m_mesh->verts.data(), 3 * sizeof(float));
+				GX_SetArray(GX_VA_TEX0, cmd->m_mesh->uvs.data(), 2 * sizeof(float));
+				GX_Begin(GX_TRIANGLES, GX_VTXFMT0, vertCount);
 				for(size_t i=0;i<vertCount;i++){
-					Vec3 vert = cmd->m_mesh->verts[i];
-					GX_Position3f32(vert.x, vert.y, vert.z);
-					Vec2 uv = cmd->m_mesh->uvs[i];
-					GX_TexCoord2f32(uv.x, uv.y);
+					GX_Position1x16(i);
+					GX_TexCoord1x16(i);
 				}
+				GX_End();
 			break;
 		}
-		GX_End();
 	}
 
 	void PrepareVertexFormatForCommand(RenderCommand* cmd, RenderCommand* prev, vfmt_id format){
