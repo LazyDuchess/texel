@@ -137,9 +137,12 @@ namespace Renderer{
 
 	void ExecuteRenderCommand(RenderCommand* cmd){
 		GX_LoadPosMtxImm(cmd->m_matrix,	GX_PNMTX0);
-		GX_ClearVtxDesc();
-		GX_InvVtxCache();
-		GX_InvalidateTexAll();
+		// call when vtx attributes change
+		//GX_ClearVtxDesc();
+		// call when dynamic meshes modified
+		//GX_InvVtxCache();
+		// call when textures modified
+		//GX_InvalidateTexAll();
 		GX_SetNumChans(1);
 	    GX_SetNumTexGens(1);
 		GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
