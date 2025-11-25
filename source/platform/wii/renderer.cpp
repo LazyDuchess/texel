@@ -69,11 +69,11 @@ namespace Renderer{
 		dispListSize = GX_EndDispList();
 		if (dispListSize > 0 && dispListSize < DISPLIST_SIZE){
 			DCFlushRange(dispList, DISPLIST_SIZE);
-			mesh->m_gxDispList = memalign(32,dispListSize);
-			memset(mesh->m_gxDispList, 0, dispListSize);
-			DCInvalidateRange(mesh->m_gxDispList,dispListSize);
-			memcpy(mesh->m_gxDispList, dispList, dispListSize);
-			DCFlushRange(mesh->m_gxDispList, dispListSize);
+			mesh->m_gxDispList = memalign(32,DISPLIST_SIZE);
+			memset(mesh->m_gxDispList, 0, DISPLIST_SIZE);
+			DCInvalidateRange(mesh->m_gxDispList,DISPLIST_SIZE);
+			memcpy(mesh->m_gxDispList, dispList, DISPLIST_SIZE);
+			DCFlushRange(mesh->m_gxDispList, DISPLIST_SIZE);
 			mesh->m_gxDispListSize = dispListSize;
 		}
 	}
