@@ -7,9 +7,13 @@
 #include <math.h>
 #include <gccore.h>
 #include <wiiuse/wpad.h>
+#include <stdio.h>
 
 #include "textures_tpl.h"
 #include "textures.h"
+#include <cassert>
+
+#define DISPLIST_SIZE 64000
 
 RenderCommand::RenderCommand(Matrix mtx, Mesh* mesh, Material* material){
 	memcpy(m_matrix, mtx, sizeof(Matrix));
@@ -42,46 +46,68 @@ namespace Renderer{
 
 	static float timer = 0;
 
+	static void* dispList;
+	static int dispListSize;
+
+	void DrawMesh(Mesh* mesh){
+		size_t vertCount = mesh->verts.size();
+		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, vertCount);
+		for(size_t i=0;i<vertCount;i++){
+			GX_Position1x16(i);
+			GX_Normal1x16(i);
+			GX_TexCoord1x16(i);
+		}
+		GX_End();
+	}
+
+	void CacheMesh(Mesh* mesh){
+		assert(reinterpret_cast<uintptr_t>(mesh->verts.data()) % 32 == 0);
+		memset(dispList, 0, DISPLIST_SIZE);
+		DCInvalidateRange(dispList,DISPLIST_SIZE);
+		GX_BeginDispList(dispList,DISPLIST_SIZE);
+		DrawMesh(mesh);
+		dispListSize = GX_EndDispList();
+		if (dispListSize > 0 && dispListSize < DISPLIST_SIZE){
+			DCFlushRange(dispList, DISPLIST_SIZE);
+			mesh->m_gxDispList = memalign(32,dispListSize);
+			memset(mesh->m_gxDispList, 0, dispListSize);
+			DCInvalidateRange(mesh->m_gxDispList,dispListSize);
+			memcpy(mesh->m_gxDispList, dispList, dispListSize);
+			DCFlushRange(mesh->m_gxDispList, dispListSize);
+			mesh->m_gxDispListSize = dispListSize;
+		}
+	}
+
 	void LoadRedMesh(Mesh* mesh){
 		#include "platform/metalHead.inc"
+		CacheMesh(mesh);
 	}
 
 	void LoadTryceMesh(Mesh* mesh){
 		#include "platform/blockGuy.inc"
+		CacheMesh(mesh);
 	}
 
 	void LoadBelMesh(Mesh* mesh){
 		#include "platform/spaceGirl.inc"
+		CacheMesh(mesh);
+	}
+
+	void DrawCachedMesh(Mesh* mesh){
+		GX_SetArray(GX_VA_POS, mesh->verts.data(), 3 * sizeof(float));
+		GX_SetArray(GX_VA_NRM, mesh->normals.data(), 3 * sizeof(float));
+		GX_SetArray(GX_VA_TEX0, mesh->uvs.data(), 2 * sizeof(float));
+		if (mesh->m_gxDispListSize > 0){
+			GX_CallDispList(mesh->m_gxDispList, mesh->m_gxDispListSize);
+		}
+		else
+		{
+			DrawMesh(mesh);
+		}
 	}
 
     void Initialize(){
-		TPLFile texturesTPL;
-		GXTexObj* redTexObj = new GXTexObj();
-		GXTexObj* tryceTexObj = new GXTexObj();
-		GXTexObj* belTexObj = new GXTexObj();
-		TPL_OpenTPLFromMemory(&texturesTPL, (void *)textures_tpl,textures_tpl_size);
-		
-		TPL_GetTexture(&texturesTPL,metalhead,redTexObj);
-		redMaterial = new Material();
-		redMaterial->m_shader = SHADER_UNLIT_TEXTURED;
-		redMaterial->m_texture = new Texture(redTexObj);
-		redMesh = new Mesh();
-		LoadRedMesh(redMesh);
-
-		TPL_GetTexture(&texturesTPL,blockguy,tryceTexObj);
-		tryceMaterial = new Material();
-		tryceMaterial->m_shader = SHADER_UNLIT_TEXTURED;
-		tryceMaterial->m_texture = new Texture(tryceTexObj);
-		tryceMesh = new Mesh();
-		LoadTryceMesh(tryceMesh);
-
-		TPL_GetTexture(&texturesTPL,spacegirl,belTexObj);
-		belMaterial = new Material();
-		belMaterial->m_shader = SHADER_UNLIT_TEXTURED;
-		belMaterial->m_texture = new Texture(belTexObj);
-		belMesh = new Mesh();
-		LoadBelMesh(belMesh);
-	    
+		dispList = memalign(32,DISPLIST_SIZE);
 		GXColor	backgroundColor	= {0, 0, 0,	255};
 	    void *fifoBuffer = NULL;
 
@@ -127,6 +153,33 @@ namespace Renderer{
 	    GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
 		GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0);
 		GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
+
+		TPLFile texturesTPL;
+		GXTexObj* redTexObj = new GXTexObj();
+		GXTexObj* tryceTexObj = new GXTexObj();
+		GXTexObj* belTexObj = new GXTexObj();
+		TPL_OpenTPLFromMemory(&texturesTPL, (void *)textures_tpl,textures_tpl_size);
+		
+		TPL_GetTexture(&texturesTPL,metalhead,redTexObj);
+		redMaterial = new Material();
+		redMaterial->m_shader = SHADER_UNLIT_TEXTURED;
+		redMaterial->m_texture = new Texture(redTexObj);
+		redMesh = new Mesh();
+		LoadRedMesh(redMesh);
+
+		TPL_GetTexture(&texturesTPL,blockguy,tryceTexObj);
+		tryceMaterial = new Material();
+		tryceMaterial->m_shader = SHADER_UNLIT_TEXTURED;
+		tryceMaterial->m_texture = new Texture(tryceTexObj);
+		tryceMesh = new Mesh();
+		LoadTryceMesh(tryceMesh);
+
+		TPL_GetTexture(&texturesTPL,spacegirl,belTexObj);
+		belMaterial = new Material();
+		belMaterial->m_shader = SHADER_UNLIT_TEXTURED;
+		belMaterial->m_texture = new Texture(belTexObj);
+		belMesh = new Mesh();
+		LoadBelMesh(belMesh);
 	}
 
     void Update(){
@@ -140,21 +193,6 @@ namespace Renderer{
 		if (WPAD_ButtonsDown(0) & WPAD_BUTTON_HOME) exit(0);
 		timer += 0.75f;
     }
-
-	void DoDrawCall(RenderCommand* cmd){
-		size_t vertCount = cmd->m_mesh->verts.size();
-		GX_SetArray(GX_VA_POS, cmd->m_mesh->verts.data(), 3 * sizeof(float));
-		GX_SetArray(GX_VA_NRM, cmd->m_mesh->normals.data(), 3 * sizeof(float));
-		GX_SetArray(GX_VA_TEX0, cmd->m_mesh->uvs.data(), 2 * sizeof(float));
-		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, vertCount);
-		for(size_t i=0;i<vertCount;i++){
-			GX_Position1x16(i);
-			GX_Normal1x16(i);
-			GX_TexCoord1x16(i);
-		}
-		GX_End();
-	}
-
 
 	void PrepareMaterial(RenderCommand* cmd, RenderCommand* prev){
 		if (prev != nullptr && cmd->m_material == prev->m_material) return;
@@ -177,7 +215,7 @@ namespace Renderer{
 		//GX_InvalidateTexAll();
 		
 		PrepareMaterial(cmd, prev);
-		DoDrawCall(cmd);
+		DrawCachedMesh(cmd->m_mesh);
 	}
 	
     void update_screen(	Mtx	viewMatrix )
