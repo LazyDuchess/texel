@@ -135,22 +135,25 @@ namespace Renderer{
 		timer += 0.75f;
     }
 
-	void ExecuteRenderCommand(RenderCommand* cmd){
-		GX_LoadPosMtxImm(cmd->m_matrix,	GX_PNMTX0);
+	void PrepareMaterial(RenderCommand* cmd, RenderCommand* prev){
+		if (prev != nullptr && cmd->m_material == prev->m_material) return;
+
+		GX_LoadTexObj(cmd->m_material->m_texture->m_texObj, GX_TEXMAP0);
+
+		if (prev != nullptr && prev->m_material->m_shader == cmd->m_material->m_shader) return;
+
 		// call when vtx attributes change
-		//GX_ClearVtxDesc();
+		GX_ClearVtxDesc();
 		// call when dynamic meshes modified
 		//GX_InvVtxCache();
 		// call when textures modified
 		//GX_InvalidateTexAll();
-		GX_SetNumChans(1);
+
+		GX_SetNumChans(0);
 	    GX_SetNumTexGens(1);
 		GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
 	    GX_SetTevOp(GX_TEVSTAGE0, GX_REPLACE);
 		GX_SetTexCoordGen(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
-		GX_LoadTexObj(cmd->m_material->m_texture->m_texObj, GX_TEXMAP0);
-		
-		size_t vertCount = cmd->m_mesh->verts.size();
 
 		GX_SetVtxDesc(GX_VA_POS, GX_DIRECT);
 		GX_SetVtxDesc(GX_VA_NRM, GX_DIRECT);
@@ -159,6 +162,19 @@ namespace Renderer{
 		GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
 		GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0);
 		GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
+	}
+
+	void ExecuteRenderCommand(RenderCommand* cmd, RenderCommand* prev){
+		GX_LoadPosMtxImm(cmd->m_matrix,	GX_PNMTX0);
+		// call when vtx attributes change
+		//GX_ClearVtxDesc();
+		// call when dynamic meshes modified
+		//GX_InvVtxCache();
+		// call when textures modified
+		//GX_InvalidateTexAll();
+		
+		PrepareMaterial(cmd, prev);
+		size_t vertCount = cmd->m_mesh->verts.size();
 		
 		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, vertCount);
 		for(size_t i=0;i<vertCount;i++){
@@ -185,24 +201,24 @@ namespace Renderer{
 	    guMtxTransApply(modelView, modelView, 0.0F,0.0F,-1.0F);
 	    guMtxConcat(viewMatrix,modelView,modelView);
 
-		RenderCommand cmd = RenderCommand(modelView, redMesh, redMaterial);
-		ExecuteRenderCommand(&cmd);
+		RenderCommand redcmd = RenderCommand(modelView, redMesh, redMaterial);
+		ExecuteRenderCommand(&redcmd, nullptr);
 
 		guMtxIdentity(modelView);
 		guMtxRotAxisDeg(modelView, &axis, timer);
 	    guMtxTransApply(modelView, modelView, -2.0F,0.0F,0.0F);
 	    guMtxConcat(viewMatrix,modelView,modelView);
 
-		cmd = RenderCommand(modelView, tryceMesh, tryceMaterial);
-		ExecuteRenderCommand(&cmd);
+		RenderCommand trycecmd = RenderCommand(modelView, tryceMesh, tryceMaterial);
+		ExecuteRenderCommand(&trycecmd, &redcmd);
 
 		guMtxIdentity(modelView);
 		guMtxRotAxisDeg(modelView, &axis, timer);
 	    guMtxTransApply(modelView, modelView, -1.0F,0.0F,-2.0F);
 	    guMtxConcat(viewMatrix,modelView,modelView);
 
-		cmd = RenderCommand(modelView, belMesh, belMaterial);
-		ExecuteRenderCommand(&cmd);
+		RenderCommand belcmd = RenderCommand(modelView, belMesh, belMaterial);
+		ExecuteRenderCommand(&belcmd, &trycecmd);
 
 	    GX_DrawDone();
 	    readyForCopy = GX_TRUE;
