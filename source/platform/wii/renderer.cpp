@@ -11,11 +11,6 @@
 #include "textures_tpl.h"
 #include "textures.h"
 
-#define VFMT_NONE 0
-#define VFMT_VTXNRMUV 1
-#define VFMT_VTXUV 2
-typedef char vfmt_id;
-
 RenderCommand::RenderCommand(Matrix mtx, Mesh* mesh, Material* material){
 	memcpy(m_matrix, mtx, sizeof(Matrix));
 	m_mesh = mesh;
@@ -103,8 +98,6 @@ namespace Renderer{
 	    VIDEO_SetBlack(false);
 	    VIDEO_Flush();
 
-
-
 	    fifoBuffer = MEM_K0_TO_K1(memalign(32,FIFO_SIZE));
 	    memset(fifoBuffer,	0, FIFO_SIZE);
 
@@ -126,6 +119,14 @@ namespace Renderer{
 	    GX_SetDispCopyGamma(GX_GM_1_0);
 
         GX_ClearVtxDesc();
+
+		GX_SetVtxDesc(GX_VA_POS, GX_INDEX16);
+		GX_SetVtxDesc(GX_VA_NRM, GX_INDEX16);
+		GX_SetVtxDesc(GX_VA_TEX0, GX_INDEX16);
+
+	    GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
+		GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0);
+		GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
 	}
 
     void Update(){
@@ -140,95 +141,30 @@ namespace Renderer{
 		timer += 0.75f;
     }
 
-	vfmt_id GetVertexFormat(shader_id shaderId){
-		switch(shaderId){
-			case SHADER_UNLIT_TEXTURED:
-				return VFMT_VTXUV;
-		}
-		return VFMT_NONE;
-	}
-
-	void PrepareVertexFormat(vfmt_id format){
-		GX_ClearVtxDesc();
-		switch(format){
-			case VFMT_VTXNRMUV:
-				GX_SetVtxDesc(GX_VA_POS, GX_INDEX16);
-				GX_SetVtxDesc(GX_VA_NRM, GX_INDEX16);
-				GX_SetVtxDesc(GX_VA_TEX0, GX_INDEX16);
-
-				GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
-				GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0);
-				GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
-			break;
-			case VFMT_VTXUV:
-				GX_SetVtxDesc(GX_VA_POS, GX_INDEX16);
-				GX_SetVtxDesc(GX_VA_TEX0, GX_INDEX16);
-
-				GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
-				GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
-			break;
-		}
-	}
-
-	void DoDrawCall(RenderCommand* cmd, vfmt_id format){
+	void DoDrawCall(RenderCommand* cmd){
 		size_t vertCount = cmd->m_mesh->verts.size();
-		switch(format){
-			case VFMT_VTXNRMUV:
-				GX_SetArray(GX_VA_POS, cmd->m_mesh->verts.data(), 3 * sizeof(float));
-				GX_SetArray(GX_VA_NRM, cmd->m_mesh->normals.data(), 3 * sizeof(float));
-				GX_SetArray(GX_VA_TEX0, cmd->m_mesh->uvs.data(), 2 * sizeof(float));
-				GX_Begin(GX_TRIANGLES, GX_VTXFMT0, vertCount);
-				for(size_t i=0;i<vertCount;i++){
-					GX_Position1x16(i);
-					GX_Normal1x16(i);
-					GX_TexCoord1x16(i);
-				}
-				GX_End();
-			break;
-			case VFMT_VTXUV:
-				GX_SetArray(GX_VA_POS, cmd->m_mesh->verts.data(), 3 * sizeof(float));
-				GX_SetArray(GX_VA_TEX0, cmd->m_mesh->uvs.data(), 2 * sizeof(float));
-				GX_Begin(GX_TRIANGLES, GX_VTXFMT0, vertCount);
-				for(size_t i=0;i<vertCount;i++){
-					GX_Position1x16(i);
-					GX_TexCoord1x16(i);
-				}
-				GX_End();
-			break;
+		GX_SetArray(GX_VA_POS, cmd->m_mesh->verts.data(), 3 * sizeof(float));
+		GX_SetArray(GX_VA_NRM, cmd->m_mesh->normals.data(), 3 * sizeof(float));
+		GX_SetArray(GX_VA_TEX0, cmd->m_mesh->uvs.data(), 2 * sizeof(float));
+		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, vertCount);
+		for(size_t i=0;i<vertCount;i++){
+			GX_Position1x16(i);
+			GX_Normal1x16(i);
+			GX_TexCoord1x16(i);
 		}
-	}
-
-	void PrepareVertexFormatForCommand(RenderCommand* cmd, RenderCommand* prev, vfmt_id format){
-		if (prev != nullptr){
-			vfmt_id prevFormat = GetVertexFormat(prev->m_material->m_shader);
-			if (prevFormat == format) return;
-		}
-		PrepareVertexFormat(format);
+		GX_End();
 	}
 
 
-	vfmt_id PrepareMaterial(RenderCommand* cmd, RenderCommand* prev){
-		vfmt_id format = GetVertexFormat(cmd->m_material->m_shader);
-		if (prev != nullptr && cmd->m_material == prev->m_material) return format;
-
+	void PrepareMaterial(RenderCommand* cmd, RenderCommand* prev){
+		if (prev != nullptr && cmd->m_material == prev->m_material) return;
 		GX_LoadTexObj(cmd->m_material->m_texture->m_texObj, GX_TEXMAP0);
-
-		if (prev != nullptr && prev->m_material->m_shader == cmd->m_material->m_shader) return format;
-
-		PrepareVertexFormatForCommand(cmd, prev, format);
-		// call when vtx attributes change
-		
-		// call when dynamic meshes modified
-		//GX_InvVtxCache();
-		// call when textures modified
-		//GX_InvalidateTexAll();
-
+		if (prev != nullptr && prev->m_material->m_shader == cmd->m_material->m_shader) return;
 		GX_SetNumChans(0);
 	    GX_SetNumTexGens(1);
 		GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
 	    GX_SetTevOp(GX_TEVSTAGE0, GX_REPLACE);
 		GX_SetTexCoordGen(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
-		return format;
 	}
 
 	void ExecuteRenderCommand(RenderCommand* cmd, RenderCommand* prev){
@@ -240,8 +176,8 @@ namespace Renderer{
 		// call when textures modified
 		//GX_InvalidateTexAll();
 		
-		vfmt_id format = PrepareMaterial(cmd, prev);
-		DoDrawCall(cmd, format);
+		PrepareMaterial(cmd, prev);
+		DoDrawCall(cmd);
 	}
 	
     void update_screen(	Mtx	viewMatrix )
