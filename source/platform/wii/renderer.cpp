@@ -50,12 +50,12 @@ namespace Renderer{
 	static int dispListSize;
 
 	void DrawMesh(Mesh* mesh){
-		size_t vertCount = mesh->verts.size();
-		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, vertCount);
-		for(size_t i=0;i<vertCount;i++){
-			GX_Position1x16(i);
-			GX_Normal1x16(i);
-			GX_TexCoord1x16(i);
+		size_t indexCount = mesh->indices.size();
+		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, indexCount/3);
+		for(size_t i=0;i<indexCount;i+=3){
+			GX_Position1x16(mesh->indices[i]);
+			GX_Normal1x16(mesh->indices[i+1]);
+			GX_TexCoord1x16(mesh->indices[i+2]);
 		}
 		GX_End();
 	}
@@ -67,6 +67,10 @@ namespace Renderer{
 		GX_BeginDispList(dispList,DISPLIST_SIZE);
 		DrawMesh(mesh);
 		dispListSize = GX_EndDispList();
+		// GX_EndDispList returns the length of the command buffer, plus padding to align to 32 bytes.
+		// For some reason making the displist buffer fit snuggly corrupts the rendering, so we just use the total size the displist was fed initially.
+		//size_t paddedDispListSize = dispListSize;
+		//assert(paddedDispListSize % 32 == 0);
 		size_t paddedDispListSize = DISPLIST_SIZE;
 		if (dispListSize > 0 && dispListSize < DISPLIST_SIZE){
 			DCFlushRange(dispList, DISPLIST_SIZE);
@@ -232,7 +236,7 @@ namespace Renderer{
 	    guMtxTransApply(modelView, modelView, 0.0F,0.0F,-1.0F);
 	    guMtxConcat(viewMatrix,modelView,modelView);
 
-		RenderCommand redcmd = RenderCommand(modelView, redMesh, redMaterial);
+		RenderCommand redcmd = RenderCommand(modelView, belMesh, belMaterial);
 		ExecuteRenderCommand(&redcmd, nullptr);
 
 		guMtxIdentity(modelView);
@@ -248,7 +252,7 @@ namespace Renderer{
 	    guMtxTransApply(modelView, modelView, -1.0F,0.0F,-2.0F);
 	    guMtxConcat(viewMatrix,modelView,modelView);
 
-		RenderCommand belcmd = RenderCommand(modelView, belMesh, belMaterial);
+		RenderCommand belcmd = RenderCommand(modelView, redMesh, redMaterial);
 		ExecuteRenderCommand(&belcmd, &trycecmd);
 
 	    GX_DrawDone();

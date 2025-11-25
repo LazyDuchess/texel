@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 typedef float f32;
 
 struct Vec2 {
@@ -10,3 +11,5 @@ struct Vec3 {
 };
 
 typedef f32	Matrix[3][4];
+
+typedef uint16_t ui16;
