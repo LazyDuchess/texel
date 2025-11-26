@@ -13,7 +13,7 @@
 #include "textures.h"
 #include <cassert>
 
-#define DISPLIST_SIZE 64000
+
 
 RenderCommand::RenderCommand(Matrix mtx, Mesh* mesh, Material* material){
 	memcpy(m_matrix, mtx, sizeof(Matrix));
@@ -58,7 +58,6 @@ namespace Renderer{
 	}
 
 	void CacheMesh(Mesh* mesh){
-		mesh->m_gxDispList = memalign(32,DISPLIST_SIZE);
 		memset(mesh->m_gxDispList, 0, DISPLIST_SIZE);
 		DCInvalidateRange(mesh->m_gxDispList,DISPLIST_SIZE);
 		DCFlushRange(mesh->verts.data(), 3 * sizeof(float) * mesh->verts.size());
@@ -174,29 +173,29 @@ namespace Renderer{
 		GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
 
 		TPLFile texturesTPL;
-		GXTexObj* redTexObj = new GXTexObj();
-		GXTexObj* tryceTexObj = new GXTexObj();
-		GXTexObj* belTexObj = new GXTexObj();
+		std::unique_ptr<GXTexObj> redTexObj = std::make_unique<GXTexObj>();
+		std::unique_ptr<GXTexObj> tryceTexObj = std::make_unique<GXTexObj>();
+		std::unique_ptr<GXTexObj> belTexObj = std::make_unique<GXTexObj>();
 		TPL_OpenTPLFromMemory(&texturesTPL, (void *)textures_tpl,textures_tpl_size);
 		
-		TPL_GetTexture(&texturesTPL,metalhead,redTexObj);
+		TPL_GetTexture(&texturesTPL,metalhead,redTexObj.get());
 		redMaterial = new Material();
 		redMaterial->m_shader = SHADER_UNLIT_TEXTURED;
-		redMaterial->m_texture = new Texture(redTexObj);
+		redMaterial->m_texture = new Texture(std::move(redTexObj));
 		redMesh = new Mesh();
 		LoadRedMesh(redMesh);
 
-		TPL_GetTexture(&texturesTPL,blockguy,tryceTexObj);
+		TPL_GetTexture(&texturesTPL,blockguy,tryceTexObj.get());
 		tryceMaterial = new Material();
 		tryceMaterial->m_shader = SHADER_UNLIT_TEXTURED;
-		tryceMaterial->m_texture = new Texture(tryceTexObj);
+		tryceMaterial->m_texture = new Texture(std::move(tryceTexObj));
 		tryceMesh = new Mesh();
 		LoadTryceMesh(tryceMesh);
 
-		TPL_GetTexture(&texturesTPL,spacegirl,belTexObj);
+		TPL_GetTexture(&texturesTPL,spacegirl,belTexObj.get());
 		belMaterial = new Material();
 		belMaterial->m_shader = SHADER_UNLIT_TEXTURED;
-		belMaterial->m_texture = new Texture(belTexObj);
+		belMaterial->m_texture = new Texture(std::move(belTexObj));
 		belMesh = new Mesh();
 		LoadBelMesh(belMesh);
 	}
@@ -215,7 +214,7 @@ namespace Renderer{
 
 	void PrepareMaterial(RenderCommand* cmd, RenderCommand* prev){
 		if (prev != nullptr && cmd->m_material == prev->m_material) return;
-		GX_LoadTexObj(cmd->m_material->m_texture->m_texObj, GX_TEXMAP0);
+		GX_LoadTexObj(cmd->m_material->m_texture->m_texObj.get(), GX_TEXMAP0);
 		if (prev != nullptr && prev->m_material->m_shader == cmd->m_material->m_shader) return;
 		GX_SetNumChans(0);
 	    GX_SetNumTexGens(1);
