@@ -1,5 +1,5 @@
 #pragma once
-#include "mathtypes.h"
+#include "texeltypes.h"
 #include "mesh.h"
 #include "material.h"
 

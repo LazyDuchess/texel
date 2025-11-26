@@ -1,5 +1,7 @@
 #pragma once
 #include <cstdint>
+#include <memory>
+#include <cstdlib>
 typedef float f32;
 
 struct Vec2 {

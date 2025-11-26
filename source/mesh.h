@@ -1,6 +1,6 @@
 #pragma once
 #include <vector>
-#include "mathtypes.h"
+#include "texeltypes.h"
 #include "aligned_allocator.hpp"
 
 class Mesh {
