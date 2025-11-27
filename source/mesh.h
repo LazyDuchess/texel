@@ -10,7 +10,7 @@ class Mesh {
         std::vector<Vec2, AlignedAllocator<Vec2, 32>> uvs;
         std::vector<ui16, AlignedAllocator<ui16, 32>> indices;
         #if PLATFORM_WII
-        alignas(32) char m_gxDispList[DISPLIST_SIZE];
+        std::vector<char, AlignedAllocator<char, 32>> m_gxDispList;
         int m_gxDispListSize = 0;
         #endif
 };

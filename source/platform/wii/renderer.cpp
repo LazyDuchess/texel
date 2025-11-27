@@ -13,7 +13,7 @@
 #include "textures.h"
 #include <cassert>
 
-
+#define DISPLIST_SIZE 64000
 
 RenderCommand::RenderCommand(Matrix mtx, Mesh* mesh, Material* material){
 	memcpy(m_matrix, mtx, sizeof(Matrix));
@@ -45,6 +45,7 @@ namespace Renderer{
     static void	copy_buffers(u32 unused);
 
 	static float timer = 0;
+	static void *tempDisplayList;
 
 	void DrawMesh(Mesh* mesh){
 		size_t indexCount = mesh->indices.size();
@@ -58,44 +59,23 @@ namespace Renderer{
 	}
 
 	void CacheMesh(Mesh* mesh){
-		memset(mesh->m_gxDispList, 0, DISPLIST_SIZE);
-		DCInvalidateRange(mesh->m_gxDispList,DISPLIST_SIZE);
+		DCInvalidateRange(tempDisplayList,DISPLIST_SIZE);
 		DCFlushRange(mesh->verts.data(), 3 * sizeof(float) * mesh->verts.size());
 		DCFlushRange(mesh->normals.data(), 3 * sizeof(float) * mesh->normals.size());
 		DCFlushRange(mesh->uvs.data(), 2 * sizeof(float) * mesh->uvs.size());
 		DCFlushRange(mesh->indices.data(), sizeof(ui16) * mesh->indices.size());
-		GX_BeginDispList(mesh->m_gxDispList,DISPLIST_SIZE);
+		GX_BeginDispList(tempDisplayList,DISPLIST_SIZE);
 		DrawMesh(mesh);
-		mesh->m_gxDispListSize = GX_EndDispList();
-		DCFlushRange(mesh->m_gxDispList, DISPLIST_SIZE);
-		assert(reinterpret_cast<uintptr_t>(mesh->m_gxDispList) % 32 == 0);
-		assert(mesh->m_gxDispListSize % 32 == 0);
-		assert(mesh->m_gxDispListSize > 0 && mesh->m_gxDispListSize < DISPLIST_SIZE);
-	}
-
-	/*
-	void CacheMesh(Mesh* mesh){
-		assert(reinterpret_cast<uintptr_t>(mesh->verts.data()) % 32 == 0);
-		memset(dispList, 0, DISPLIST_SIZE);
-		DCInvalidateRange(dispList,DISPLIST_SIZE);
-		GX_BeginDispList(dispList,DISPLIST_SIZE);
-		DrawMesh(mesh);
-		dispListSize = GX_EndDispList();
-		// GX_EndDispList returns the length of the command buffer, plus padding to align to 32 bytes.
-		// For some reason making the displist buffer fit snuggly corrupts the rendering, so we just use the total size the displist was fed initially.
-		//size_t paddedDispListSize = dispListSize;
-		//assert(paddedDispListSize % 32 == 0);
-		size_t paddedDispListSize = DISPLIST_SIZE;
-		if (dispListSize > 0 && dispListSize < DISPLIST_SIZE){
-			DCFlushRange(dispList, DISPLIST_SIZE);
-			mesh->m_gxDispList = memalign(32,paddedDispListSize);
-			memset(mesh->m_gxDispList, 0, paddedDispListSize);
-			DCInvalidateRange(mesh->m_gxDispList,paddedDispListSize);
-			memcpy(mesh->m_gxDispList, dispList, paddedDispListSize);
-			DCFlushRange(mesh->m_gxDispList, paddedDispListSize);
-			mesh->m_gxDispListSize = dispListSize;
+		size_t finalSize = GX_EndDispList();
+		if (finalSize > 0 && finalSize < DISPLIST_SIZE){
+			mesh->m_gxDispListSize = finalSize;
+			DCFlushRange(tempDisplayList, DISPLIST_SIZE);
+			mesh->m_gxDispList.resize(mesh->m_gxDispListSize);
+			DCInvalidateRange(tempDisplayList,DISPLIST_SIZE);
+			memcpy(mesh->m_gxDispList.data(), tempDisplayList, finalSize);
+			DCFlushRange(mesh->m_gxDispList.data(), finalSize);
 		}
-	}*/
+	}
 
 	void LoadRedMesh(Mesh* mesh){
 		#include "platform/metalHead.inc"
@@ -117,7 +97,7 @@ namespace Renderer{
 		GX_SetArray(GX_VA_NRM, mesh->normals.data(), 3 * sizeof(float));
 		GX_SetArray(GX_VA_TEX0, mesh->uvs.data(), 2 * sizeof(float));
 		if (mesh->m_gxDispListSize > 0){
-			GX_CallDispList(mesh->m_gxDispList, mesh->m_gxDispListSize);
+			GX_CallDispList(mesh->m_gxDispList.data(), mesh->m_gxDispListSize);
 		}
 		else
 		{
@@ -126,6 +106,7 @@ namespace Renderer{
 	}
 
     void Initialize(){
+		tempDisplayList = memalign(32, DISPLIST_SIZE);
 		GXColor	backgroundColor	= {0, 0, 0,	255};
 	    void *fifoBuffer = NULL;
 

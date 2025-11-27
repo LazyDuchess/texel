@@ -3,10 +3,6 @@
 #include <memory>
 #include <cstdlib>
 
-#if PLATFORM_WII
-#define DISPLIST_SIZE 64000
-#endif
-
 typedef float f32;
 
 struct Vec2 {
