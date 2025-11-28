@@ -75,8 +75,9 @@ static void UpdateTransform(){
 }
 
 void CameraControls(Camera* cam){
-	const float cameraSpeed = 0.1f;
-	const float cameraSpinSpeed = 0.05f;
+	const float cameraSpeed = 0.05f;
+	const float cameraSpinSpeed = 0.025f;
+	const float fovSpeed = 0.5f;
 	u32 heldButtons = WPAD_ButtonsHeld(0);
 	glm::quat rot = cam->m_rotation;
 
@@ -116,10 +117,14 @@ void CameraControls(Camera* cam){
 		);
 	}
 	if (heldButtons & WPAD_BUTTON_PLUS){
-		cam->m_position += VECTOR_UP * cameraSpeed;
+		cam->m_fieldOfView += fovSpeed;
+		if (cam->m_fieldOfView >= 100)
+			cam->m_fieldOfView = 100;
 	}
 	if (heldButtons & WPAD_BUTTON_MINUS){
-		cam->m_position -= VECTOR_UP * cameraSpeed;
+		cam->m_fieldOfView -= fovSpeed;
+		if (cam->m_fieldOfView <= 1)
+			cam->m_fieldOfView = 1;
 	}
 }
 
@@ -145,6 +150,8 @@ int	main(void) {
 	testEntity = ent.get();
 	std::unique_ptr<Camera> camEnt = std::make_unique<Camera>();
 	Camera* cam = camEnt.get();
+	cam->m_position.z = 2.0f;
+	cam->m_position.y = 1.0f;
 	std::unique_ptr<MeshRenderable> renderable = std::make_unique<MeshRenderable>();
 	renderable.get()->m_mesh = testMesh;
 	renderable.get()->m_material = testMaterial;
