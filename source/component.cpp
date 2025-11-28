@@ -3,3 +3,7 @@
 void Component::OnAdd(){
 
 }
+
+void Component::OnRemove(){
+
+}

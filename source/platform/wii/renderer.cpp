@@ -195,10 +195,8 @@ namespace Renderer{
 
 		for(size_t i=0;i<entityCount;i++){
 			Entity* entity = currentScene->m_entities[i].get();
-			size_t rendererCount = entity->m_renderables.size();
-			for(size_t j=0;j<rendererCount;j++){
-				Renderable* renderable = entity->m_renderables[j];
-				renderable->QueueRenderCommands();
+			if (entity->m_renderable != nullptr){
+				entity->m_renderable->QueueRenderCommands();
 			}
 		}
 

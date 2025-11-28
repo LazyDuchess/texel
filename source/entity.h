@@ -14,7 +14,7 @@ class Entity {
         glm::vec3 m_position = glm::vec3(0.0f, 0.0f, 0.0f);
         glm::quat m_rotation = glm::identity<glm::quat>();
         Scene* m_scene;
-        std::vector<Renderable*> m_renderables;
+        Renderable* m_renderable;
         std::vector<std::unique_ptr<Component>> m_components;
         void AddComponent(std::unique_ptr<Component> component);
         glm::mat4 GetMatrix();

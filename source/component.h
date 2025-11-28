@@ -5,4 +5,5 @@ class Component{
     public:
         Entity* m_owner;
         virtual void OnAdd();
+        virtual void OnRemove();
 };
