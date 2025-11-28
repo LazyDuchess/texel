@@ -1,4 +1,5 @@
 #define	FIFO_SIZE (256*1024)
+#define DISPLIST_SIZE 64000
 #include "platform/renderer.h"
 #include "mesh.h"
 #include <stdlib.h>
@@ -11,12 +12,14 @@
 
 #include "textures_tpl.h"
 #include "textures.h"
+#include "scene_manager.h"
+#include "scene.h"
+#include "entity.h"
+#include "renderable.h"
 #include <cassert>
 
-#define DISPLIST_SIZE 64000
-
-RenderCommand::RenderCommand(Matrix mtx, Mesh* mesh, Material* material){
-	memcpy(m_matrix, mtx, sizeof(Matrix));
+RenderCommand::RenderCommand(glm::mat4 mtx, Mesh* mesh, Material* material){
+	m_matrix = mtx;
 	m_mesh = mesh;
 	m_material = material;
 }
@@ -77,6 +80,11 @@ namespace Renderer{
 		}
 	}
 
+	void ProcessMesh(Mesh* mesh){
+		CacheMesh(mesh);
+	}
+
+	/*
 	void LoadRedMesh(Mesh* mesh){
 		#include "platform/metalHead.inc"
 		CacheMesh(mesh);
@@ -90,7 +98,7 @@ namespace Renderer{
 	void LoadBelMesh(Mesh* mesh){
 		#include "platform/spaceGirl.inc"
 		CacheMesh(mesh);
-	}
+	}*/
 
 	void DrawCachedMesh(Mesh* mesh){
 		GX_SetArray(GX_VA_POS, mesh->verts.data(), 3 * sizeof(float));
@@ -164,21 +172,21 @@ namespace Renderer{
 		redMaterial->m_shader = SHADER_UNLIT_TEXTURED;
 		redMaterial->m_texture = new Texture(std::move(redTexObj));
 		redMesh = new Mesh();
-		LoadRedMesh(redMesh);
+		//LoadRedMesh(redMesh);
 
 		TPL_GetTexture(&texturesTPL,blockguy,tryceTexObj.get());
 		tryceMaterial = new Material();
 		tryceMaterial->m_shader = SHADER_UNLIT_TEXTURED;
 		tryceMaterial->m_texture = new Texture(std::move(tryceTexObj));
 		tryceMesh = new Mesh();
-		LoadTryceMesh(tryceMesh);
+		//LoadTryceMesh(tryceMesh);
 
 		TPL_GetTexture(&texturesTPL,spacegirl,belTexObj.get());
 		belMaterial = new Material();
 		belMaterial->m_shader = SHADER_UNLIT_TEXTURED;
 		belMaterial->m_texture = new Texture(std::move(belTexObj));
 		belMesh = new Mesh();
-		LoadBelMesh(belMesh);
+		//LoadBelMesh(belMesh);
 	}
 
     void Update(){
@@ -205,7 +213,17 @@ namespace Renderer{
 	}
 
 	void ExecuteRenderCommand(RenderCommand* cmd, RenderCommand* prev){
-		GX_LoadPosMtxImm(cmd->m_matrix,	GX_PNMTX0);
+		f32 gx[3][4];
+
+		for (int r = 0; r < 3; r++)
+		{
+    		for (int c = 0; c < 4; c++)
+    		{
+        		gx[r][c] = cmd->m_matrix[c][r];   // glm is column-major, so note: m[col][row]
+    		}
+		}
+
+		GX_LoadPosMtxImm(gx, GX_PNMTX0);
 		// call when vtx attributes change
 		//GX_ClearVtxDesc();
 		// call when dynamic meshes modified
@@ -216,9 +234,28 @@ namespace Renderer{
 		PrepareMaterial(cmd, prev);
 		DrawCachedMesh(cmd->m_mesh);
 	}
+
+	static std::vector<RenderCommand> currentRenderCommands;
+	static Mtx currentViewMatrix;
+
+	void QueueMeshRenderCommand(glm::mat4 Matrix, Mesh* mesh, Material* material){
+		glm::mat4 convert;
+		convert[0][0] = Matrix[0][0]; convert[1][0] = Matrix[0][1];
+  		convert[0][1] = Matrix[1][0]; convert[1][1] = Matrix[1][1];
+  		convert[0][2] = Matrix[2][0]; convert[1][2] = Matrix[2][1];
+  		convert[0][3] = Matrix[3][0]; convert[1][3] = Matrix[3][1];
+  		convert[2][0] = Matrix[0][2]; convert[3][0] = Matrix[0][3];
+  		convert[2][1] = Matrix[1][2]; convert[3][1] = Matrix[1][3];
+  		convert[2][2] = Matrix[2][2]; convert[3][2] = Matrix[2][3];
+  		convert[2][3] = Matrix[3][2]; convert[3][3] = Matrix[3][3];
+		guMtxConcat(currentViewMatrix,convert,convert);
+		currentRenderCommands.push_back(RenderCommand(convert, mesh, material));
+	}
 	
     void update_screen(	Mtx	viewMatrix )
     {
+		currentViewMatrix = viewMatrix;
+		/*
 	    Mtx	modelView;
 
 	    guMtxIdentity(modelView);
@@ -248,6 +285,28 @@ namespace Renderer{
 
 		RenderCommand belcmd = RenderCommand(modelView, redMesh, redMaterial);
 		ExecuteRenderCommand(&belcmd, &trycecmd);
+*/
+		Scene* currentScene = SceneManager::currentScene;
+		size_t entityCount = currentScene->m_entities.size();
+
+		for(size_t i=0;i<entityCount;i++){
+			Entity* entity = currentScene->m_entities[i].get();
+			size_t rendererCount = entity->m_renderables.size();
+			for(size_t j=0;j<rendererCount;j++){
+				Renderable* renderable = entity->m_renderables[j];
+				renderable->QueueRenderCommands();
+			}
+		}
+
+		size_t renderableCount = currentRenderCommands.size();
+		RenderCommand* previousRenderCommand = nullptr;
+		for(size_t i=0;i<renderableCount;i++){
+			RenderCommand* renderCommand = &currentRenderCommands[i];
+			ExecuteRenderCommand(renderCommand, previousRenderCommand);
+			previousRenderCommand = renderCommand;
+		}
+
+		currentRenderCommands.clear();
 
 	    GX_DrawDone();
 	    readyForCopy = GX_TRUE;
