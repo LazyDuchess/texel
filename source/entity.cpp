@@ -9,10 +9,10 @@ void Entity::AddComponent(std::unique_ptr<Component> component){
 }
 
 glm::mat4 Entity::GetMatrix(){
-    glm::mat4 mtx = glm::mat4_cast(m_rotation);
-    mtx[0] *= m_scale.x;
-    mtx[1] *= m_scale.y;
-    mtx[2] *= m_scale.z;
-    mtx[3] = glm::vec4(m_position, 1.0f);
-    return mtx;
+    glm::mat4 tf = glm::mat4(1.0f);
+
+    tf = glm::translate(tf, m_position);
+    tf *= glm::mat4_cast(m_rotation);
+    tf = glm::scale(tf, m_scale);
+    return tf;
 }

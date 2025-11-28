@@ -10,8 +10,6 @@
 #include <wiiuse/wpad.h>
 #include <stdio.h>
 
-#include "textures_tpl.h"
-#include "textures.h"
 #include "scene_manager.h"
 #include "scene.h"
 #include "entity.h"
@@ -25,15 +23,6 @@ RenderCommand::RenderCommand(glm::mat4 mtx, Mesh* mesh, Material* material){
 }
 
 namespace Renderer{
-	static Material *redMaterial;
-	static Mesh *redMesh;
-
-	static Material *tryceMaterial;
-	static Mesh *tryceMesh;
-
-	static Material *belMaterial;
-	static Mesh *belMesh;
-
     static GXRModeObj	*screenMode;
     static void	*frameBuffer;
     static vu8	readyForCopy;
@@ -47,7 +36,6 @@ namespace Renderer{
     static void update_screen(Mtx viewMatrix);
     static void	copy_buffers(u32 unused);
 
-	static float timer = 0;
 	static void *tempDisplayList;
 
 	void DrawMesh(Mesh* mesh){
@@ -83,22 +71,6 @@ namespace Renderer{
 	void ProcessMesh(Mesh* mesh){
 		CacheMesh(mesh);
 	}
-
-	/*
-	void LoadRedMesh(Mesh* mesh){
-		#include "platform/metalHead.inc"
-		CacheMesh(mesh);
-	}
-
-	void LoadTryceMesh(Mesh* mesh){
-		#include "platform/blockGuy.inc"
-		CacheMesh(mesh);
-	}
-
-	void LoadBelMesh(Mesh* mesh){
-		#include "platform/spaceGirl.inc"
-		CacheMesh(mesh);
-	}*/
 
 	void DrawCachedMesh(Mesh* mesh){
 		GX_SetArray(GX_VA_POS, mesh->verts.data(), 3 * sizeof(float));
@@ -160,33 +132,6 @@ namespace Renderer{
 	    GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
 		GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0);
 		GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
-
-		TPLFile texturesTPL;
-		std::unique_ptr<GXTexObj> redTexObj = std::make_unique<GXTexObj>();
-		std::unique_ptr<GXTexObj> tryceTexObj = std::make_unique<GXTexObj>();
-		std::unique_ptr<GXTexObj> belTexObj = std::make_unique<GXTexObj>();
-		TPL_OpenTPLFromMemory(&texturesTPL, (void *)textures_tpl,textures_tpl_size);
-		
-		TPL_GetTexture(&texturesTPL,metalhead,redTexObj.get());
-		redMaterial = new Material();
-		redMaterial->m_shader = SHADER_UNLIT_TEXTURED;
-		redMaterial->m_texture = new Texture(std::move(redTexObj));
-		redMesh = new Mesh();
-		//LoadRedMesh(redMesh);
-
-		TPL_GetTexture(&texturesTPL,blockguy,tryceTexObj.get());
-		tryceMaterial = new Material();
-		tryceMaterial->m_shader = SHADER_UNLIT_TEXTURED;
-		tryceMaterial->m_texture = new Texture(std::move(tryceTexObj));
-		tryceMesh = new Mesh();
-		//LoadTryceMesh(tryceMesh);
-
-		TPL_GetTexture(&texturesTPL,spacegirl,belTexObj.get());
-		belMaterial = new Material();
-		belMaterial->m_shader = SHADER_UNLIT_TEXTURED;
-		belMaterial->m_texture = new Texture(std::move(belTexObj));
-		belMesh = new Mesh();
-		//LoadBelMesh(belMesh);
 	}
 
     void Update(){
@@ -195,10 +140,6 @@ namespace Renderer{
         guLookAt(view, &camera,	&up, &look);
 		GX_SetViewport(0,0,screenMode->fbWidth,screenMode->efbHeight,0,1);
 		update_screen(view);
-
-		WPAD_ScanPads();
-		if (WPAD_ButtonsDown(0) & WPAD_BUTTON_HOME) exit(0);
-		timer += 0.75f;
     }
 
 	void PrepareMaterial(RenderCommand* cmd, RenderCommand* prev){
@@ -212,17 +153,21 @@ namespace Renderer{
 		GX_SetTexCoordGen(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
 	}
 
+	static std::vector<RenderCommand> currentRenderCommands;
+	static Mtx currentViewMatrix;
+
 	void ExecuteRenderCommand(RenderCommand* cmd, RenderCommand* prev){
-		f32 gx[3][4];
+		Mtx gx;
+		// affine
+		gx[0][0] = cmd->m_matrix[0][0]; gx[0][1] = cmd->m_matrix[0][1]; gx[0][2] = cmd->m_matrix[0][2];
+		gx[1][0] = cmd->m_matrix[1][0]; gx[1][1] = cmd->m_matrix[1][1]; gx[1][2] = cmd->m_matrix[1][2];
+		gx[2][0] = cmd->m_matrix[2][0]; gx[2][1] = cmd->m_matrix[2][1]; gx[2][2] = cmd->m_matrix[2][2];
 
-		for (int r = 0; r < 3; r++)
-		{
-    		for (int c = 0; c < 4; c++)
-    		{
-        		gx[r][c] = cmd->m_matrix[c][r];   // glm is column-major, so note: m[col][row]
-    		}
-		}
-
+		// translation
+		gx[0][3] = cmd->m_matrix[3][0]; // Tx
+		gx[1][3] = cmd->m_matrix[3][1]; // Ty
+		gx[2][3] = cmd->m_matrix[3][2]; // Tz
+		guMtxConcat(currentViewMatrix,gx,gx);
 		GX_LoadPosMtxImm(gx, GX_PNMTX0);
 		// call when vtx attributes change
 		//GX_ClearVtxDesc();
@@ -235,57 +180,16 @@ namespace Renderer{
 		DrawCachedMesh(cmd->m_mesh);
 	}
 
-	static std::vector<RenderCommand> currentRenderCommands;
-	static Mtx currentViewMatrix;
+	
 
 	void QueueMeshRenderCommand(glm::mat4 Matrix, Mesh* mesh, Material* material){
-		glm::mat4 convert;
-		convert[0][0] = Matrix[0][0]; convert[1][0] = Matrix[0][1];
-  		convert[0][1] = Matrix[1][0]; convert[1][1] = Matrix[1][1];
-  		convert[0][2] = Matrix[2][0]; convert[1][2] = Matrix[2][1];
-  		convert[0][3] = Matrix[3][0]; convert[1][3] = Matrix[3][1];
-  		convert[2][0] = Matrix[0][2]; convert[3][0] = Matrix[0][3];
-  		convert[2][1] = Matrix[1][2]; convert[3][1] = Matrix[1][3];
-  		convert[2][2] = Matrix[2][2]; convert[3][2] = Matrix[2][3];
-  		convert[2][3] = Matrix[3][2]; convert[3][3] = Matrix[3][3];
-		guMtxConcat(currentViewMatrix,convert,convert);
-		currentRenderCommands.push_back(RenderCommand(convert, mesh, material));
+		currentRenderCommands.push_back(RenderCommand(Matrix, mesh, material));
 	}
 	
     void update_screen(	Mtx	viewMatrix )
     {
-		currentViewMatrix = viewMatrix;
-		/*
-	    Mtx	modelView;
-
-	    guMtxIdentity(modelView);
-		guVector axis;
-		axis.x = 0;
-		axis.y = 1;
-		axis.z = 0;
-		guMtxRotAxisDeg(modelView, &axis, timer);
-	    guMtxTransApply(modelView, modelView, 0.0F,0.0F,-1.0F);
-	    guMtxConcat(viewMatrix,modelView,modelView);
-
-		RenderCommand redcmd = RenderCommand(modelView, belMesh, belMaterial);
-		ExecuteRenderCommand(&redcmd, nullptr);
-
-		guMtxIdentity(modelView);
-		guMtxRotAxisDeg(modelView, &axis, timer);
-	    guMtxTransApply(modelView, modelView, -2.0F,0.0F,0.0F);
-	    guMtxConcat(viewMatrix,modelView,modelView);
-
-		RenderCommand trycecmd = RenderCommand(modelView, tryceMesh, tryceMaterial);
-		ExecuteRenderCommand(&trycecmd, &redcmd);
-
-		guMtxIdentity(modelView);
-		guMtxRotAxisDeg(modelView, &axis, timer);
-	    guMtxTransApply(modelView, modelView, -1.0F,0.0F,-2.0F);
-	    guMtxConcat(viewMatrix,modelView,modelView);
-
-		RenderCommand belcmd = RenderCommand(modelView, redMesh, redMaterial);
-		ExecuteRenderCommand(&belcmd, &trycecmd);
-*/
+		memcpy(currentViewMatrix, viewMatrix, sizeof(Mtx));
+		
 		Scene* currentScene = SceneManager::currentScene;
 		size_t entityCount = currentScene->m_entities.size();
 
