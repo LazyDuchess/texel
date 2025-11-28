@@ -15,6 +15,7 @@
 #include "entity.h"
 #include "renderable.h"
 #include <cassert>
+#include "camera.h"
 
 RenderCommand::RenderCommand(glm::mat4 mtx, Mesh* mesh, Material* material){
 	m_matrix = mtx;
@@ -33,7 +34,7 @@ namespace Renderer{
 	static guVector up =	{0.0F, 1.0F, 0.0F};
 	static guVector look	= {0.0F, 1.0F, 0.0F};
 
-    static void update_screen(Mtx viewMatrix);
+    static void update_screen(	Scene* scene, Mtx	viewMatrix );
     static void	copy_buffers(u32 unused);
 
 	static void *tempDisplayList;
@@ -134,12 +135,33 @@ namespace Renderer{
 		GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
 	}
 
-    void Update(){
-		guPerspective(projection, 45, (CONF_GetAspectRatio() == CONF_ASPECT_16_9) ? 16.0F/9.0F : 4.0F/3.0F, 1.0F,	30.0F);
+	void GLTransformToGX(Mtx gxMatrix, glm::mat4 glmMatrix){
+		// affine
+		gxMatrix[0][0] = glmMatrix[0][0]; gxMatrix[0][1] = glmMatrix[0][1]; gxMatrix[0][2] = glmMatrix[0][2];
+		gxMatrix[1][0] = glmMatrix[1][0]; gxMatrix[1][1] = glmMatrix[1][1]; gxMatrix[1][2] = glmMatrix[1][2];
+		gxMatrix[2][0] = glmMatrix[2][0]; gxMatrix[2][1] = glmMatrix[2][1]; gxMatrix[2][2] = glmMatrix[2][2];
+
+		// translation
+		gxMatrix[0][3] = glmMatrix[3][0]; // Tx
+		gxMatrix[1][3] = glmMatrix[3][1]; // Ty
+		gxMatrix[2][3] = glmMatrix[3][2]; // Tz
+	}
+	
+	void RenderWithCamera(Camera* cam){
+		guPerspective(projection, cam->m_fieldOfView, (CONF_GetAspectRatio() == CONF_ASPECT_16_9) ? 16.0F/9.0F : 4.0F/3.0F, cam->m_nearPlane,	cam->m_farPlane);
 	    GX_LoadProjectionMtx(projection, GX_PERSPECTIVE);
-        guLookAt(view, &camera,	&up, &look);
+		glm::mat4 glView = cam->GetViewMatrix();
+		GLTransformToGX(view, glView);
 		GX_SetViewport(0,0,screenMode->fbWidth,screenMode->efbHeight,0,1);
-		update_screen(view);
+		update_screen(cam->m_scene, view);
+	}
+
+    void Update(){
+		Scene* currentScene = SceneManager::currentScene;
+		if (currentScene == nullptr) return;
+		Camera* currentCam = currentScene->m_activeCamera;
+		if (currentCam == nullptr) return;
+		RenderWithCamera(currentCam);
     }
 
 	void PrepareMaterial(RenderCommand* cmd, RenderCommand* prev){
@@ -158,15 +180,7 @@ namespace Renderer{
 
 	void ExecuteRenderCommand(RenderCommand* cmd, RenderCommand* prev){
 		Mtx gx;
-		// affine
-		gx[0][0] = cmd->m_matrix[0][0]; gx[0][1] = cmd->m_matrix[0][1]; gx[0][2] = cmd->m_matrix[0][2];
-		gx[1][0] = cmd->m_matrix[1][0]; gx[1][1] = cmd->m_matrix[1][1]; gx[1][2] = cmd->m_matrix[1][2];
-		gx[2][0] = cmd->m_matrix[2][0]; gx[2][1] = cmd->m_matrix[2][1]; gx[2][2] = cmd->m_matrix[2][2];
-
-		// translation
-		gx[0][3] = cmd->m_matrix[3][0]; // Tx
-		gx[1][3] = cmd->m_matrix[3][1]; // Ty
-		gx[2][3] = cmd->m_matrix[3][2]; // Tz
+		GLTransformToGX(gx, cmd->m_matrix);
 		guMtxConcat(currentViewMatrix,gx,gx);
 		GX_LoadPosMtxImm(gx, GX_PNMTX0);
 		// call when vtx attributes change
@@ -186,15 +200,14 @@ namespace Renderer{
 		currentRenderCommands.push_back(RenderCommand(Matrix, mesh, material));
 	}
 	
-    void update_screen(	Mtx	viewMatrix )
+    void update_screen(	Scene* scene, Mtx	viewMatrix )
     {
 		memcpy(currentViewMatrix, viewMatrix, sizeof(Mtx));
 
-		Scene* currentScene = SceneManager::currentScene;
-		size_t entityCount = currentScene->m_entities.size();
+		size_t entityCount = scene->m_entities.size();
 
 		for(size_t i=0;i<entityCount;i++){
-			Entity* entity = currentScene->m_entities[i].get();
+			Entity* entity = scene->m_entities[i].get();
 			if (entity->m_renderable != nullptr){
 				entity->m_renderable->QueueRenderCommands();
 			}
