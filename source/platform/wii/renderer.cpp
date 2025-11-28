@@ -135,23 +135,21 @@ namespace Renderer{
 		GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
 	}
 
-	void GLTransformToGX(Mtx gxMatrix, glm::mat4 glmMatrix){
-		// affine
-		gxMatrix[0][0] = glmMatrix[0][0]; gxMatrix[0][1] = glmMatrix[0][1]; gxMatrix[0][2] = glmMatrix[0][2];
-		gxMatrix[1][0] = glmMatrix[1][0]; gxMatrix[1][1] = glmMatrix[1][1]; gxMatrix[1][2] = glmMatrix[1][2];
-		gxMatrix[2][0] = glmMatrix[2][0]; gxMatrix[2][1] = glmMatrix[2][1]; gxMatrix[2][2] = glmMatrix[2][2];
-
-		// translation
-		gxMatrix[0][3] = glmMatrix[3][0]; // Tx
-		gxMatrix[1][3] = glmMatrix[3][1]; // Ty
-		gxMatrix[2][3] = glmMatrix[3][2]; // Tz
+	void TransposeGLMatrix(Mtx gxMatrix, glm::mat4 glmMatrix){
+		for (int r = 0; r < 3; r++)
+		{
+    		for (int c = 0; c < 4; c++)
+    		{
+        		gxMatrix[r][c] = glmMatrix[c][r];
+			}
+    	}
 	}
 	
 	void RenderWithCamera(Camera* cam){
 		guPerspective(projection, cam->m_fieldOfView, (CONF_GetAspectRatio() == CONF_ASPECT_16_9) ? 16.0F/9.0F : 4.0F/3.0F, cam->m_nearPlane,	cam->m_farPlane);
 	    GX_LoadProjectionMtx(projection, GX_PERSPECTIVE);
 		glm::mat4 glView = cam->GetViewMatrix();
-		GLTransformToGX(view, glView);
+		TransposeGLMatrix(view, glView);
 		GX_SetViewport(0,0,screenMode->fbWidth,screenMode->efbHeight,0,1);
 		update_screen(cam->m_scene, view);
 	}
@@ -180,7 +178,7 @@ namespace Renderer{
 
 	void ExecuteRenderCommand(RenderCommand* cmd, RenderCommand* prev){
 		Mtx gx;
-		GLTransformToGX(gx, cmd->m_matrix);
+		TransposeGLMatrix(gx, cmd->m_matrix);
 		guMtxConcat(currentViewMatrix,gx,gx);
 		GX_LoadPosMtxImm(gx, GX_PNMTX0);
 		// call when vtx attributes change

@@ -18,9 +18,10 @@
 #include "textures.h"
 #include "mesh_renderable.h"
 #include "glm/gtc/quaternion.hpp"
+#include "texeltypes.h"
 
 static float timer = 0.0f;
-static int TransformMode = 0;
+static int TransformMode = 9;
 static Entity* testEntity;
 
 static void LoadRedMesh(Mesh* mesh){
@@ -73,6 +74,55 @@ static void UpdateTransform(){
 	
 }
 
+void CameraControls(Camera* cam){
+	const float cameraSpeed = 0.1f;
+	const float cameraSpinSpeed = 0.05f;
+	u32 heldButtons = WPAD_ButtonsHeld(0);
+	glm::quat rot = cam->m_rotation;
+
+	glm::vec3 fw = rot * VECTOR_FORWARD;
+	glm::vec3 rg = rot * VECTOR_RIGHT;
+	glm::vec3 up = rot * VECTOR_UP;
+
+	if (heldButtons & WPAD_BUTTON_A){
+		if (heldButtons & WPAD_BUTTON_UP){
+			cam->m_rotation = glm::normalize(
+    			glm::angleAxis(-cameraSpinSpeed, glm::normalize(rg)) * cam->m_rotation
+			);
+		}
+		if (heldButtons & WPAD_BUTTON_DOWN){
+			cam->m_rotation = glm::normalize(
+    			glm::angleAxis(cameraSpinSpeed, glm::normalize(rg)) * cam->m_rotation
+			);
+		}
+	}
+	else
+	{
+		if (heldButtons & WPAD_BUTTON_UP){
+			cam->m_position += fw * cameraSpeed;
+		}
+		if (heldButtons & WPAD_BUTTON_DOWN){
+			cam->m_position -= fw * cameraSpeed;
+		}
+	}
+	if (heldButtons & WPAD_BUTTON_RIGHT){
+		cam->m_rotation = glm::normalize(
+    		glm::angleAxis(-cameraSpinSpeed, VECTOR_UP) * cam->m_rotation
+		);
+	}
+	if (heldButtons & WPAD_BUTTON_LEFT){
+		cam->m_rotation = glm::normalize(
+    		glm::angleAxis(cameraSpinSpeed, VECTOR_UP) * cam->m_rotation
+		);
+	}
+	if (heldButtons & WPAD_BUTTON_PLUS){
+		cam->m_position += VECTOR_UP * cameraSpeed;
+	}
+	if (heldButtons & WPAD_BUTTON_MINUS){
+		cam->m_position -= VECTOR_UP * cameraSpeed;
+	}
+}
+
 int	main(void) {
 	Renderer::Initialize();
 	
@@ -95,8 +145,6 @@ int	main(void) {
 	testEntity = ent.get();
 	std::unique_ptr<Camera> camEnt = std::make_unique<Camera>();
 	Camera* cam = camEnt.get();
-	cam->m_position.z = 2.0;
-	cam->m_position.y = 1.0;
 	std::unique_ptr<MeshRenderable> renderable = std::make_unique<MeshRenderable>();
 	renderable.get()->m_mesh = testMesh;
 	renderable.get()->m_material = testMaterial;
@@ -108,13 +156,14 @@ int	main(void) {
 	while (1)
 	{
 		timer += 0.1f;
+		CameraControls(cam);
 		UpdateTransform();
 		WPAD_ScanPads();
 		u32 buttons = WPAD_ButtonsDown(0);
 		if (buttons & WPAD_BUTTON_HOME) exit(0);
 		if (buttons & WPAD_BUTTON_B){
 			TransformMode++;
-			if (TransformMode > 8)
+			if (TransformMode > 9)
 				TransformMode = 0;
 		}
 		Renderer::Update();
