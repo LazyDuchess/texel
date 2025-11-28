@@ -32,7 +32,7 @@ static void UpdateTransform(){
 	testEntity->m_position = {0.0f, 0.0f, 0.0f};
 	testEntity->m_scale = {1.0f, 1.0f, 1.0f};
 	testEntity->m_rotation = glm::identity<glm::quat>();
-	float delta = sin(timer) * 5.0f;
+	float delta = sin(timer) * 2.0f;
 	switch(TransformMode){
 		case 0:
 		testEntity->m_scale.x = delta;
@@ -101,7 +101,6 @@ int	main(void) {
 
 	while (1)
 	{
-		Renderer::Update();
 		timer += 0.1f;
 		UpdateTransform();
 		WPAD_ScanPads();
@@ -112,6 +111,7 @@ int	main(void) {
 			if (TransformMode > 8)
 				TransformMode = 0;
 		}
+		Renderer::Update();
 	}
 	return 0;
 }

@@ -29,9 +29,9 @@ namespace Renderer{
 
 	static Mtx44	projection;
 	static Mtx	view;
-	static guVector camera =	{2.0F, 2.0F, 0.5F};
+	static guVector camera =	{2.0F, 2.0F, 1.5F};
 	static guVector up =	{0.0F, 1.0F, 0.0F};
-	static guVector look	= {0.0F, 1.0F, -1.0F};
+	static guVector look	= {0.0F, 1.0F, 0.0F};
 
     static void update_screen(Mtx viewMatrix);
     static void	copy_buffers(u32 unused);
@@ -189,7 +189,7 @@ namespace Renderer{
     void update_screen(	Mtx	viewMatrix )
     {
 		memcpy(currentViewMatrix, viewMatrix, sizeof(Mtx));
-		
+
 		Scene* currentScene = SceneManager::currentScene;
 		size_t entityCount = currentScene->m_entities.size();
 
