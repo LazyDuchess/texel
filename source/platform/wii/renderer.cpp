@@ -16,6 +16,7 @@
 #include "renderable.h"
 #include <cassert>
 #include "camera.h"
+#include "ogc/lwp_watchdog.h"
 
 RenderCommand::RenderCommand(glm::mat4 mtx, Mesh* mesh, Material* material){
 	m_matrix = mtx;
@@ -30,9 +31,6 @@ namespace Renderer{
 
 	static Mtx44	projection;
 	static Mtx	view;
-	static guVector camera =	{2.0F, 2.0F, 1.5F};
-	static guVector up =	{0.0F, 1.0F, 0.0F};
-	static guVector look	= {0.0F, 1.0F, 0.0F};
 
     static void update_screen(	Scene* scene, Mtx	viewMatrix );
     static void	copy_buffers(u32 unused);
@@ -40,6 +38,8 @@ namespace Renderer{
 	static void *tempDisplayList;
 
 	static s8 HWButton = -1;
+
+	static uint64_t startDeltaTime = 0;
 
 	/**
 	 * Callback for the reset button on the Wii.
@@ -125,6 +125,9 @@ namespace Renderer{
 		SYS_SetPowerCallback(WiiPowerPressed);
 		WPAD_SetPowerButtonCallback(WiimotePowerPressed);
 
+		settime((uint64_t)0); //So we don't have to start with a huge number.
+		startDeltaTime = gettime();
+
 	    screenMode = VIDEO_GetPreferredMode(NULL);
 
 	    frameBuffer	= MEM_K0_TO_K1(SYS_AllocateFramebuffer(screenMode));
@@ -186,6 +189,8 @@ namespace Renderer{
 	}
 
     void Update(){
+		Time::DeltaTime = (float)((double)(gettime() - startDeltaTime) / (double)(TB_TIMER_CLOCK * 1000)); // division is to convert from ticks to seconds
+		startDeltaTime = gettime();
 		Scene* currentScene = SceneManager::CurrentScene;
 		if (currentScene == nullptr) return;
 		Camera* currentCam = currentScene->m_activeCamera;
