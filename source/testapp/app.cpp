@@ -16,6 +16,7 @@
 #include "mesh_renderable.h"
 #include "glm/gtc/quaternion.hpp"
 #include "texeltypes.h"
+#include "time.h"
 
 namespace App {
     static float timer = 0.0f;
@@ -74,9 +75,9 @@ namespace App {
     }
 
     void CameraControls(Camera* cam){
-        const float cameraSpeed = 0.05f;
-        const float cameraSpinSpeed = 0.025f;
-        const float fovSpeed = 0.5f;
+        const float cameraSpeed = 3.0f;
+        const float cameraSpinSpeed = 1.0f;
+        const float fovSpeed = 40.0f;
         u32 heldButtons = WPAD_ButtonsHeld(0);
         glm::quat rot = cam->m_rotation;
 
@@ -87,41 +88,41 @@ namespace App {
         if (heldButtons & WPAD_BUTTON_A){
             if (heldButtons & WPAD_BUTTON_UP){
                 cam->m_rotation = glm::normalize(
-                    glm::angleAxis(cameraSpinSpeed, glm::normalize(rg)) * cam->m_rotation
+                    glm::angleAxis(cameraSpinSpeed * Time::DeltaTime, glm::normalize(rg)) * cam->m_rotation
                 );
             }
             if (heldButtons & WPAD_BUTTON_DOWN){
                 cam->m_rotation = glm::normalize(
-                    glm::angleAxis(-cameraSpinSpeed, glm::normalize(rg)) * cam->m_rotation
+                    glm::angleAxis(-cameraSpinSpeed * Time::DeltaTime, glm::normalize(rg)) * cam->m_rotation
                 );
             }
         }
         else
         {
             if (heldButtons & WPAD_BUTTON_UP){
-                cam->m_position += fw * cameraSpeed;
+                cam->m_position += fw * cameraSpeed * Time::DeltaTime;
             }
             if (heldButtons & WPAD_BUTTON_DOWN){
-                cam->m_position -= fw * cameraSpeed;
+                cam->m_position -= fw * cameraSpeed * Time::DeltaTime;
             }
         }
         if (heldButtons & WPAD_BUTTON_RIGHT){
             cam->m_rotation = glm::normalize(
-                glm::angleAxis(-cameraSpinSpeed, VECTOR_UP) * cam->m_rotation
+                glm::angleAxis(-cameraSpinSpeed * Time::DeltaTime, VECTOR_UP) * cam->m_rotation
             );
         }
         if (heldButtons & WPAD_BUTTON_LEFT){
             cam->m_rotation = glm::normalize(
-                glm::angleAxis(cameraSpinSpeed, VECTOR_UP) * cam->m_rotation
+                glm::angleAxis(cameraSpinSpeed * Time::DeltaTime, VECTOR_UP) * cam->m_rotation
             );
         }
         if (heldButtons & WPAD_BUTTON_PLUS){
-            cam->m_fieldOfView += fovSpeed;
+            cam->m_fieldOfView += fovSpeed * Time::DeltaTime;
             if (cam->m_fieldOfView >= 100)
                 cam->m_fieldOfView = 100;
         }
         if (heldButtons & WPAD_BUTTON_MINUS){
-            cam->m_fieldOfView -= fovSpeed;
+            cam->m_fieldOfView -= fovSpeed * Time::DeltaTime;
             if (cam->m_fieldOfView <= 1)
                 cam->m_fieldOfView = 1;
         }
@@ -159,7 +160,7 @@ namespace App {
 
     }
     void FrameUpdate(){
-        timer += 0.1f;
+        timer += Time::DeltaTime * 2.0;
 		CameraControls(cam);
 		UpdateTransform();
 		WPAD_ScanPads();
