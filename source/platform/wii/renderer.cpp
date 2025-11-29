@@ -39,6 +39,33 @@ namespace Renderer{
 
 	static void *tempDisplayList;
 
+	static s8 HWButton = -1;
+
+	/**
+	 * Callback for the reset button on the Wii.
+	 */
+	static void WiiResetPressed(u32 irq, void* ctx)
+	{
+		HWButton = SYS_RETURNTOMENU;
+	}
+
+	/**
+	 * Callback for the power button on the Wii.
+	 */
+	static void WiiPowerPressed()
+	{
+		HWButton = SYS_POWEROFF_STANDBY;
+	}
+
+	/**
+ 	* Callback for the power button on the Wiimote.
+ 	* @param[in] chan The Wiimote that pressed the button
+ 	*/
+	static void WiimotePowerPressed(s32 chan)
+	{
+		HWButton = SYS_POWEROFF_STANDBY;
+	}
+
 	void DrawMesh(Mesh* mesh){
 		size_t indexCount = mesh->indices.size();
 		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, indexCount/3);
@@ -93,6 +120,10 @@ namespace Renderer{
 
 	    VIDEO_Init();
 	    WPAD_Init();
+
+		SYS_SetResetCallback(WiiResetPressed);
+		SYS_SetPowerCallback(WiiPowerPressed);
+		WPAD_SetPowerButtonCallback(WiimotePowerPressed);
 
 	    screenMode = VIDEO_GetPreferredMode(NULL);
 
@@ -160,6 +191,10 @@ namespace Renderer{
 		Camera* currentCam = currentScene->m_activeCamera;
 		if (currentCam == nullptr) return;
 		RenderWithCamera(currentCam);
+		if(HWButton != -1)
+		{
+			SYS_ResetSystem(HWButton, 0, 0);
+		}
     }
 
 	void PrepareMaterial(RenderCommand* cmd, RenderCommand* prev){
