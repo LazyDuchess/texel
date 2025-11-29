@@ -16,6 +16,14 @@ class Entity {
         Scene* m_scene;
         Renderable* m_renderable;
         std::vector<std::unique_ptr<Component>> m_components;
-        void AddComponent(std::unique_ptr<Component> component);
+        template<typename T, typename... Args>
+        T* AddComponent(Args&&... args){
+            auto ptr = std::make_unique<T>(std::forward<Args>(args)...);
+            T* raw = ptr.get();
+            m_components.push_back(std::move(ptr));
+            ((Component*)raw)->m_owner = this;
+            ((Component*)raw)->OnAdd();
+            return raw;
+        }
         glm::mat4 GetMatrix();
 };

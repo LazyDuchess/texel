@@ -88,12 +88,12 @@ void CameraControls(Camera* cam){
 	if (heldButtons & WPAD_BUTTON_A){
 		if (heldButtons & WPAD_BUTTON_UP){
 			cam->m_rotation = glm::normalize(
-    			glm::angleAxis(-cameraSpinSpeed, glm::normalize(rg)) * cam->m_rotation
+    			glm::angleAxis(cameraSpinSpeed, glm::normalize(rg)) * cam->m_rotation
 			);
 		}
 		if (heldButtons & WPAD_BUTTON_DOWN){
 			cam->m_rotation = glm::normalize(
-    			glm::angleAxis(cameraSpinSpeed, glm::normalize(rg)) * cam->m_rotation
+    			glm::angleAxis(-cameraSpinSpeed, glm::normalize(rg)) * cam->m_rotation
 			);
 		}
 	}
@@ -130,9 +130,6 @@ void CameraControls(Camera* cam){
 
 int	main(void) {
 	Renderer::Initialize();
-	
-	Scene* gameScene = new Scene();
-	SceneManager::currentScene = gameScene;
 
 	TPLFile texturesTPL;
 	std::unique_ptr<GXTexObj> textTexture = std::make_unique<GXTexObj>();
@@ -146,18 +143,21 @@ int	main(void) {
 	Mesh* testMesh = new Mesh();
 	LoadRedMesh(testMesh);
 
-	std::unique_ptr<Entity> ent = std::make_unique<Entity>();
-	testEntity = ent.get();
-	std::unique_ptr<Camera> camEnt = std::make_unique<Camera>();
-	Camera* cam = camEnt.get();
+	Scene* gameScene = new Scene();
+	SceneManager::currentScene = gameScene;
+
+	// Red character ent
+	testEntity = gameScene->AddEntity<Entity>();
+	MeshRenderable* meshRenderer = testEntity->AddComponent<MeshRenderable>();
+	meshRenderer->m_mesh = testMesh;
+	meshRenderer->m_material = testMaterial;
+
+	// Camera ent
+	Camera* cam = gameScene->AddEntity<Camera>();
 	cam->m_position.z = 2.0f;
 	cam->m_position.y = 1.0f;
-	std::unique_ptr<MeshRenderable> renderable = std::make_unique<MeshRenderable>();
-	renderable.get()->m_mesh = testMesh;
-	renderable.get()->m_material = testMaterial;
-	testEntity->AddComponent(std::move(renderable));
-	gameScene->AddEntity(std::move(ent));
-	gameScene->AddEntity(std::move(camEnt));
+
+	// Set as active camera
 	gameScene->m_activeCamera = cam;
 
 	while (1)
