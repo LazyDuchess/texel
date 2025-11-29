@@ -141,7 +141,7 @@ namespace App {
 	    LoadRedMesh(testMesh);
 
 	    Scene* gameScene = new Scene();
-	    SceneManager::currentScene = gameScene;
+	    SceneManager::CurrentScene = gameScene;
 
 	    // Red character ent
 	    testEntity = gameScene->AddEntity<Entity>();

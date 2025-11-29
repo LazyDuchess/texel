@@ -186,7 +186,7 @@ namespace Renderer{
 	}
 
     void Update(){
-		Scene* currentScene = SceneManager::currentScene;
+		Scene* currentScene = SceneManager::CurrentScene;
 		if (currentScene == nullptr) return;
 		Camera* currentCam = currentScene->m_activeCamera;
 		if (currentCam == nullptr) return;

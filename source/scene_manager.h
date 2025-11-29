@@ -2,5 +2,5 @@
 #include "scene.h"
 
 namespace SceneManager{
-    extern Scene* currentScene;
+    extern Scene* CurrentScene;
 }
