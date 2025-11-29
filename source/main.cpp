@@ -1,13 +1,13 @@
 #include "platform/renderer.h"
-#include "game.h"
+#include "app.h"
 
 int	main(void) {
 	Renderer::Initialize();
-	Game::Initialize();
+	App::Initialize();
 	
 	while (1)
 	{
-		Game::FrameUpdate();
+		App::FrameUpdate();
 		Renderer::Update();
 	}
 	return 0;

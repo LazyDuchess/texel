@@ -1,3 +1,4 @@
+#include "app.h"
 #include <stdlib.h>
 #include <string.h>
 #include <malloc.h>
@@ -16,14 +17,14 @@
 #include "glm/gtc/quaternion.hpp"
 #include "texeltypes.h"
 
-namespace Game {
+namespace App {
     static float timer = 0.0f;
     static int TransformMode = 9;
     static Entity* testEntity;
     static Camera* cam;
 
     static void LoadRedMesh(Mesh* mesh){
-        #include "game/metalHead.inc"
+        #include "testapp/metalHead.inc"
         Renderer::ProcessMesh(mesh);
     }
 

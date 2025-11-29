@@ -1,5 +1,5 @@
 #pragma once
-namespace Game{
+namespace App{
     void Initialize();
     void FrameUpdate();
 };
