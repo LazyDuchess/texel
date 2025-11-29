@@ -79,6 +79,7 @@ namespace App {
         const float cameraSpinSpeed = 1.0f;
         const float fovSpeed = 40.0f;
         u32 heldButtons = WPAD_ButtonsHeld(0);
+        u32 downButtons = WPAD_ButtonsDown(0);
         glm::quat rot = cam->m_rotation;
 
         glm::vec3 fw = rot * VECTOR_FORWARD;
@@ -126,6 +127,8 @@ namespace App {
             if (cam->m_fieldOfView <= 1)
                 cam->m_fieldOfView = 1;
         }
+        if (downButtons & WPAD_BUTTON_1)
+            Renderer::CAPFPS = !Renderer::CAPFPS;
     }
 
     void Initialize(){

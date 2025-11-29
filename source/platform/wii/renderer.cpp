@@ -25,6 +25,7 @@ RenderCommand::RenderCommand(glm::mat4 mtx, Mesh* mesh, Material* material){
 }
 
 namespace Renderer{
+	bool CAPFPS = false;
     static GXRModeObj	*screenMode;
     static void	*frameBuffer;
     static vu8	readyForCopy;
@@ -189,8 +190,9 @@ namespace Renderer{
 	}
 
     void Update(){
-		Time::DeltaTime = (float)((double)(gettime() - startDeltaTime) / (double)(TB_TIMER_CLOCK * 1000)); // division is to convert from ticks to seconds
-		startDeltaTime = gettime();
+		uint64_t now = gettime();
+		Time::DeltaTime = (float)((double)(now - startDeltaTime) / (double)(TB_TIMER_CLOCK * 1000)); // division is to convert from ticks to seconds
+		startDeltaTime = now;
 		Scene* currentScene = SceneManager::CurrentScene;
 		if (currentScene == nullptr) return;
 		Camera* currentCam = currentScene->m_activeCamera;
@@ -265,6 +267,8 @@ namespace Renderer{
 	    readyForCopy = GX_TRUE;
 
 	    VIDEO_WaitVSync();
+		if (CAPFPS)
+			VIDEO_WaitVSync();
 	    return;
     }
 

@@ -5,6 +5,7 @@
 #include "glm/glm.hpp"
 
 namespace Renderer{
+    extern bool CAPFPS;
     void Initialize();
     void Update();
     void ProcessMesh(Mesh* mesh);
