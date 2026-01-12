@@ -1,4 +1,5 @@
 #pragma once
+#include <cstddef>
 #if PLATFORM_WII
 #include <gccore.h>
 #endif

@@ -18,6 +18,7 @@
 #include "texeltypes.h"
 #include "time.h"
 #include "dynamicmeshloader.h"
+#include "debug.h"
 
 namespace App {
     static float timer = 0.0f;
@@ -132,6 +133,7 @@ namespace App {
     }
 
     void Initialize(){
+        Debug::DrawStaticCollisionGrid = true;
         TPLFile texturesTPL;
 	    std::unique_ptr<GXTexObj> textTexture = std::make_unique<GXTexObj>();
 	    TPL_OpenTPLFromMemory(&texturesTPL, (void *)textures_tpl,textures_tpl_size);

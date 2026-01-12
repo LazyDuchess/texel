@@ -118,7 +118,7 @@ namespace Renderer{
     void Initialize(){
 		fatInitDefault();
 		tempDisplayList = memalign(32, DISPLIST_SIZE);
-		GXColor	backgroundColor	= {0, 0, 0,	255};
+		GXColor	backgroundColor	= {0, 0, 50,	255};
 	    void *fifoBuffer = NULL;
 
 	    VIDEO_Init();
@@ -161,15 +161,13 @@ namespace Renderer{
 	    GX_CopyDisp(frameBuffer,GX_TRUE);
 	    GX_SetDispCopyGamma(GX_GM_1_0);
 
-        GX_ClearVtxDesc();
-
-		GX_SetVtxDesc(GX_VA_POS, GX_INDEX16);
-		GX_SetVtxDesc(GX_VA_NRM, GX_INDEX16);
-		GX_SetVtxDesc(GX_VA_TEX0, GX_INDEX16);
-
-	    GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
+		GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
 		GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0);
 		GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
+
+		GX_SetVtxAttrFmt(GX_VTXFMT1, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
+		GX_SetVtxAttrFmt(GX_VTXFMT1, GX_VA_CLR0, GX_CLR_RGBA, GX_RGBA8, 0);
+
 		SYS_STDIO_Report(true);
 	}
 
@@ -213,6 +211,7 @@ namespace Renderer{
 		if (prev != nullptr && prev->m_material->m_shader == cmd->m_material->m_shader) return;
 		GX_SetNumChans(0);
 	    GX_SetNumTexGens(1);
+		GX_SetNumTevStages(1);
 		GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
 	    GX_SetTevOp(GX_TEVSTAGE0, GX_REPLACE);
 		GX_SetTexCoordGen(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
@@ -220,6 +219,30 @@ namespace Renderer{
 
 	static std::vector<RenderCommand> currentRenderCommands;
 	static Mtx currentViewMatrix;
+
+	void ProcessDebugDraws(){
+		Mtx	modelView;
+		guMtxIdentity(modelView);
+		guMtxTransApply(modelView, modelView, 0.0F,	0.0F, 0.0F);
+		guMtxConcat(currentViewMatrix,modelView,modelView);
+
+		GX_LoadPosMtxImm(modelView,	GX_PNMTX0);
+		GX_SetCurrentMtx(GX_PNMTX0);
+
+		GX_SetNumChans(1);
+		GX_SetChanCtrl(GX_COLOR0A0,GX_DISABLE,GX_SRC_VTX,GX_SRC_VTX,GX_LIGHTNULL,GX_DF_NONE,GX_AF_NONE);
+	    GX_SetNumTexGens(0);
+		GX_SetNumTevStages(1);
+		GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORDNULL, GX_TEXMAP_NULL, GX_COLOR0A0);
+	    GX_SetTevOp(GX_TEVSTAGE0, GX_PASSCLR);
+
+		GX_Begin(GX_LINES, GX_VTXFMT1, 2);
+		GX_Position3f32(0.0f, 0.0f, 0.0f);
+		GX_Color4u8(255, 255, 255, 255);
+		GX_Position3f32(0.0f, COLLGRIDSIZE, 0.0f);
+		GX_Color4u8(255, 255, 255, 255);
+		GX_End();
+	}
 
 	void ExecuteRenderCommand(RenderCommand* cmd, RenderCommand* prev){
 		Mtx gx;
@@ -245,6 +268,11 @@ namespace Renderer{
 	
     void update_screen(	Scene* scene, Mtx	viewMatrix )
     {
+		GX_ClearVtxDesc();
+		GX_SetVtxDesc(GX_VA_POS, GX_INDEX16);
+		GX_SetVtxDesc(GX_VA_NRM, GX_INDEX16);
+		GX_SetVtxDesc(GX_VA_TEX0, GX_INDEX16);
+
 		memcpy(currentViewMatrix, viewMatrix, sizeof(Mtx));
 
 		size_t entityCount = scene->m_entities.size();
@@ -265,6 +293,13 @@ namespace Renderer{
 		}
 
 		currentRenderCommands.clear();
+
+		GX_ClearVtxDesc();
+
+		GX_SetVtxDesc(GX_VA_POS, GX_DIRECT);
+		GX_SetVtxDesc(GX_VA_CLR0, GX_DIRECT);
+
+		ProcessDebugDraws();
 
 	    GX_DrawDone();
 	    readyForCopy = GX_TRUE;
