@@ -220,42 +220,11 @@ namespace Renderer{
 	static std::vector<RenderCommand> currentRenderCommands;
 	static Mtx currentViewMatrix;
 
-	static void ProcessDebugDraws(){
-		Mtx	modelView;
-		guMtxIdentity(modelView);
-		guMtxTransApply(modelView, modelView, 0.0F,	0.0F, 0.0F);
-		guMtxConcat(currentViewMatrix,modelView,modelView);
-
-		GX_LoadPosMtxImm(modelView,	GX_PNMTX0);
-		GX_SetCurrentMtx(GX_PNMTX0);
-
-		GX_SetNumChans(1);
-		GX_SetChanCtrl(GX_COLOR0A0,GX_DISABLE,GX_SRC_VTX,GX_SRC_VTX,GX_LIGHTNULL,GX_DF_NONE,GX_AF_NONE);
-	    GX_SetNumTexGens(0);
-		GX_SetNumTevStages(1);
-		GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORDNULL, GX_TEXMAP_NULL, GX_COLOR0A0);
-	    GX_SetTevOp(GX_TEVSTAGE0, GX_PASSCLR);
-
-		GX_Begin(GX_LINES, GX_VTXFMT1, 2);
-		GX_Position3f32(0.0f, 0.0f, 0.0f);
-		GX_Color4u8(255, 255, 255, 255);
-		GX_Position3f32(0.0f, COLLGRIDSIZE, 0.0f);
-		GX_Color4u8(255, 255, 255, 255);
-		GX_End();
-	}
-
 	static void ExecuteRenderCommand(RenderCommand* cmd, RenderCommand* prev){
 		Mtx gx;
 		TransposeGLMatrix(gx, cmd->m_matrix);
 		guMtxConcat(currentViewMatrix,gx,gx);
 		GX_LoadPosMtxImm(gx, GX_PNMTX0);
-		// call when vtx attributes change
-		//GX_ClearVtxDesc();
-		// call when dynamic meshes modified
-		//GX_InvVtxCache();
-		// call when textures modified
-		//GX_InvalidateTexAll();
-		
 		PrepareMaterial(cmd, prev);
 		DrawCachedMesh(cmd->m_mesh);
 	}
@@ -294,19 +263,10 @@ namespace Renderer{
 
 		currentRenderCommands.clear();
 
-		GX_ClearVtxDesc();
-
-		GX_SetVtxDesc(GX_VA_POS, GX_DIRECT);
-		GX_SetVtxDesc(GX_VA_CLR0, GX_DIRECT);
-
-		ProcessDebugDraws();
-
 	    GX_DrawDone();
 	    readyForCopy = GX_TRUE;
 
 	    VIDEO_WaitVSync();
-		if (CAPFPS)
-			VIDEO_WaitVSync();
 	    return;
     }
 
