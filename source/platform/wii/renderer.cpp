@@ -68,7 +68,7 @@ namespace Renderer{
 		HWButton = SYS_POWEROFF_STANDBY;
 	}
 
-	void DrawMesh(Mesh* mesh){
+	static void DrawMesh(Mesh* mesh){
 		size_t indexCount = mesh->indices.size();
 		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, indexCount/3);
 		for(size_t i=0;i<indexCount;i+=3){
@@ -79,7 +79,7 @@ namespace Renderer{
 		GX_End();
 	}
 
-	void CacheMesh(Mesh* mesh){
+	static void CacheMesh(Mesh* mesh){
 		DCInvalidateRange(tempDisplayList,DISPLIST_SIZE);
 		DCFlushRange(mesh->verts.data(), 3 * sizeof(float) * mesh->verts.size());
 		DCFlushRange(mesh->normals.data(), 3 * sizeof(float) * mesh->normals.size());
@@ -102,7 +102,7 @@ namespace Renderer{
 		CacheMesh(mesh);
 	}
 
-	void DrawCachedMesh(Mesh* mesh){
+	static void DrawCachedMesh(Mesh* mesh){
 		GX_SetArray(GX_VA_POS, mesh->verts.data(), 3 * sizeof(float));
 		GX_SetArray(GX_VA_NRM, mesh->normals.data(), 3 * sizeof(float));
 		GX_SetArray(GX_VA_TEX0, mesh->uvs.data(), 2 * sizeof(float));
@@ -171,7 +171,7 @@ namespace Renderer{
 		SYS_STDIO_Report(true);
 	}
 
-	void TransposeGLMatrix(Mtx gxMatrix, glm::mat4 glmMatrix){
+	static void TransposeGLMatrix(Mtx gxMatrix, glm::mat4 glmMatrix){
 		for (int r = 0; r < 3; r++)
 		{
     		for (int c = 0; c < 4; c++)
@@ -181,7 +181,7 @@ namespace Renderer{
     	}
 	}
 	
-	void RenderWithCamera(Camera* cam){
+	static void RenderWithCamera(Camera* cam){
 		guPerspective(projection, cam->m_fieldOfView, (CONF_GetAspectRatio() == CONF_ASPECT_16_9) ? 16.0F/9.0F : 4.0F/3.0F, cam->m_nearPlane,	cam->m_farPlane);
 	    GX_LoadProjectionMtx(projection, GX_PERSPECTIVE);
 		glm::mat4 glView = cam->GetViewMatrix();
@@ -205,7 +205,7 @@ namespace Renderer{
 		}
     }
 
-	void PrepareMaterial(RenderCommand* cmd, RenderCommand* prev){
+	static void PrepareMaterial(RenderCommand* cmd, RenderCommand* prev){
 		if (prev != nullptr && cmd->m_material == prev->m_material) return;
 		GX_LoadTexObj(cmd->m_material->m_texture->m_texObj.get(), GX_TEXMAP0);
 		if (prev != nullptr && prev->m_material->m_shader == cmd->m_material->m_shader) return;
@@ -220,7 +220,7 @@ namespace Renderer{
 	static std::vector<RenderCommand> currentRenderCommands;
 	static Mtx currentViewMatrix;
 
-	void ProcessDebugDraws(){
+	static void ProcessDebugDraws(){
 		Mtx	modelView;
 		guMtxIdentity(modelView);
 		guMtxTransApply(modelView, modelView, 0.0F,	0.0F, 0.0F);
@@ -244,7 +244,7 @@ namespace Renderer{
 		GX_End();
 	}
 
-	void ExecuteRenderCommand(RenderCommand* cmd, RenderCommand* prev){
+	static void ExecuteRenderCommand(RenderCommand* cmd, RenderCommand* prev){
 		Mtx gx;
 		TransposeGLMatrix(gx, cmd->m_matrix);
 		guMtxConcat(currentViewMatrix,gx,gx);
@@ -262,11 +262,11 @@ namespace Renderer{
 
 	
 
-	void QueueMeshRenderCommand(glm::mat4 Matrix, Mesh* mesh, Material* material){
+	static void QueueMeshRenderCommand(glm::mat4 Matrix, Mesh* mesh, Material* material){
 		currentRenderCommands.push_back(RenderCommand(Matrix, mesh, material));
 	}
 	
-    void update_screen(	Scene* scene, Mtx	viewMatrix )
+    static void update_screen(	Scene* scene, Mtx	viewMatrix )
     {
 		GX_ClearVtxDesc();
 		GX_SetVtxDesc(GX_VA_POS, GX_INDEX16);
