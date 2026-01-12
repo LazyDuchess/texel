@@ -128,12 +128,9 @@ namespace App {
             if (cam->m_fieldOfView <= 1)
                 cam->m_fieldOfView = 1;
         }
-        if (downButtons & WPAD_BUTTON_1)
-            Renderer::CAPFPS = !Renderer::CAPFPS;
     }
 
     void Initialize(){
-        Debug::DrawStaticCollisionGrid = true;
         TPLFile texturesTPL;
 	    std::unique_ptr<GXTexObj> textTexture = std::make_unique<GXTexObj>();
 	    TPL_OpenTPLFromMemory(&texturesTPL, (void *)textures_tpl,textures_tpl_size);

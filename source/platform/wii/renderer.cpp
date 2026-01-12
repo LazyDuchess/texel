@@ -231,7 +231,7 @@ namespace Renderer{
 
 	
 
-	static void QueueMeshRenderCommand(glm::mat4 Matrix, Mesh* mesh, Material* material){
+	void QueueMeshRenderCommand(glm::mat4 Matrix, Mesh* mesh, Material* material){
 		currentRenderCommands.push_back(RenderCommand(Matrix, mesh, material));
 	}
 	
