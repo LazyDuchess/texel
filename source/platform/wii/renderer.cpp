@@ -17,6 +17,7 @@
 #include <cassert>
 #include "camera.h"
 #include "ogc/lwp_watchdog.h"
+#include <fat.h>
 
 RenderCommand::RenderCommand(glm::mat4 mtx, Mesh* mesh, Material* material){
 	m_matrix = mtx;
@@ -115,6 +116,7 @@ namespace Renderer{
 	}
 
     void Initialize(){
+		fatInitDefault();
 		tempDisplayList = memalign(32, DISPLIST_SIZE);
 		GXColor	backgroundColor	= {0, 0, 0,	255};
 	    void *fifoBuffer = NULL;
@@ -168,6 +170,7 @@ namespace Renderer{
 	    GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
 		GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0);
 		GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
+		SYS_STDIO_Report(true);
 	}
 
 	void TransposeGLMatrix(Mtx gxMatrix, glm::mat4 glmMatrix){

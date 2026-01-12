@@ -17,6 +17,7 @@
 #include "glm/gtc/quaternion.hpp"
 #include "texeltypes.h"
 #include "time.h"
+#include "dynamicmeshloader.h"
 
 namespace App {
     static float timer = 0.0f;
@@ -25,8 +26,7 @@ namespace App {
     static Camera* cam;
 
     static void LoadRedMesh(Mesh* mesh){
-        #include "testapp/metalHead.inc"
-        Renderer::ProcessMesh(mesh);
+        DynamicMeshLoader::LoadFromFile(mesh, "metalHead.rdm");
     }
 
     static void UpdateTransform(){
